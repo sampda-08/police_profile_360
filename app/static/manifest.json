@@ -2,7 +2,7 @@
   "name": "SHORYA 360",
   "short_name": "SHORYA 360",
   "description": "Police Record & Suspect Profile Management System",
-  "start_url": "/dashboard",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#1e3a8a",

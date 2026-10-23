@@ -89,10 +89,16 @@ def create_app():
     app.register_blueprint(search_bp, url_prefix='/search')
     app.register_blueprint(admin_bp, url_prefix='/settings')
 
+    # Root Route
     @app.route('/')
     def root():
         if 'user' in session:
             return redirect(url_for('dashboard.index'))
         return redirect(url_for('auth.login'))
+
+    # Lightweight Keep-Alive Endpoint for cron-job.org
+    @app.route('/health')
+    def health_ping():
+        return {"status": "ok", "app": "SHORYA 360"}, 200
 
     return app

@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+{% block title %}संशयित प्रोफाइल - {{ profile.profile_id }}{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-200 space-y-6">
+
+    <!-- Top Header -->
+    <div class="flex flex-wrap justify-between items-start border-b pb-4 gap-4">
+        <div class="flex items-center space-x-4">
+            {% if profile.main_photo %}
+            <img src="{{ url_for('static', filename='uploads/' + profile.main_photo) }}" alt="Main Photo"
+                onclick="openImageZoom(this.src)"
+                class="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg border-2 border-slate-300 shadow-sm cursor-pointer hover:opacity-90 hover:ring-2 hover:ring-blue-600 transition"
+                title="मोठे करून पाहण्यासाठी क्लिक करा">
+            {% else %}
+            <div
+                class="w-20 h-20 bg-slate-200 rounded-lg flex items-center justify-center text-xs text-slate-500 font-bold">
+                No Photo</div>
+            {% endif %}
+            <div>
+                <h1 class="text-2xl font-black text-slate-900">{{ profile.full_name }}</h1>
+                <p class="text-xs text-slate-500 mt-0.5">टोपणनाव: <span class="font-semibold text-slate-800">{{
+                        profile.alias or 'नोंद नाही' }}</span></p>
+                <p class="text-xs text-slate-500">जन्मतारीख: <span class="font-semibold text-slate-800">{{ profile.dob
+                        or 'नोंद नाही' }}</span></p>
+            </div>
+        </div>
+
+        <div class="text-right">
+            <span
+                class="text-xs font-mono font-bold bg-blue-100 text-blue-900 px-3 py-1 rounded-full border border-blue-200">
+                कायमस्वरूपी Profile ID: {{ profile.profile_id }}
+            </span>
+            <div class="text-xs text-slate-500 mt-2">
+                नोंद अधिकारी: <strong>{{ profile.created_by }}</strong>
+            </div>
+
+            <!-- Edit Profile Button -->
+            {% if session.get('role') in ['Administrator', 'Investigator'] %}
+            <!-- Top Right Action Controls in view.html -->
+            <div class="mt-3 flex justify-end gap-2">
+                {% if session.get('role') == 'Administrator' %}
+                <!-- Admin Only: Full Edit Access -->
+                <a href="{{ url_for('profiles.edit', profile_id=profile.profile_id) }}"
+                    class="inline-flex items-center gap-1 bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded text-xs transition shadow-sm">
+                    ✏️ संपूर्ण संपादन (Admin Edit)
+                </a>
+                {% elif session.get('role') in ['Investigator', 'Reviewer'] %}
+                <!-- Field Officers / Other Users: Append-Only Access -->
+                <a href="{{ url_for('profiles.append_details', profile_id=profile.profile_id) }}"
+                    class="inline-flex items-center gap-1 bg-blue-700 hover:bg-blue-800 text-white font-bold px-3 py-1.5 rounded text-xs transition shadow-sm">
+                    ➕ गुन्हा / साथीदार / फोटो जोडा
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 2 Column Details Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+
+        <!-- Address & Station -->
+        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-2">
+            <h3 class="font-bold text-blue-900 text-sm border-b pb-1">पोलीस ठाणे व पत्ता</h3>
+            <p><strong>पोलीस ठाणे:</strong> {{ profile.station }}</p>
+            <p><strong>गाव/शहर:</strong> {{ profile.address.village_city if profile.address else '-' }}</p>
+            <p><strong>तालुका:</strong> {{ profile.address.subdist if profile.address else '-' }} |
+                <strong>जिल्हा:</strong> {{ profile.address.dist if profile.address else '-' }}</p>
+            <p><strong>ओळख खुणा / व्रण:</strong> {{ profile.identification_mark or '-' }}</p>
+            <p>
+                <strong>बायोमेट्रिक नोंद:</strong>
+                {% if profile.biometric and profile.biometric.data %}
+                <span class="text-green-700 font-bold">उपलब्ध ({{ profile.biometric.source }})</span>
+                {% else %}
+                <span class="text-slate-400">नोंद नाही</span>
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- Identity & Contacts with Interactive Unmask Trigger -->
+        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-2">
+            <h3 class="font-bold text-blue-900 text-sm border-b pb-1">संपर्क व शासकीय ओळखपत्रे</h3>
+
+            <!-- Aadhaar Card Row -->
+            <div class="flex items-center justify-between">
+                <p>
+                    <strong>आधार कार्ड:</strong>
+                    <span id="aadhaar-display" class="font-mono font-semibold">{{ profile.identity_docs.masked_aadhaar
+                        or '-' }}</span>
+                </p>
+                {% if profile.identity_docs and profile.identity_docs.aadhaar_card_no %}
+                <button type="button" onclick="triggerUnmask('aadhaar_card_no', 'aadhaar-display')"
+                    class="text-[10px] bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-2 py-0.5 rounded transition">
+                    👁️ Reveal
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- PAN Card Row -->
+            <div class="flex items-center justify-between">
+                <p>
+                    <strong>पॅन कार्ड:</strong>
+                    <span id="pan-display" class="font-mono font-semibold">{{ profile.identity_docs.masked_pan or '-'
+                        }}</span>
+                </p>
+                {% if profile.identity_docs and profile.identity_docs.pan_card_no %}
+                <button type="button" onclick="triggerUnmask('pan_card_no', 'pan-display')"
+                    class="text-[10px] bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-2 py-0.5 rounded transition">
+                    👁️ Reveal
+                </button>
+                {% endif %}
+            </div>
+
+            <p><strong>संपर्क क्रमांक:</strong> {{ profile.contacts|join(', ') if profile.contacts else '-' }}</p>
+            <p><strong>तडीपार आदेश:</strong> <span class="font-semibold text-amber-700">{{ profile.tadipar.status if
+                    profile.tadipar else 'No' }}</span> ({{ profile.tadipar.order_details if profile.tadipar else '-'
+                }})</p>
+        </div>
+
+    </div>
+
+    <!-- Multiple Gunha (Cases) -->
+    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 text-xs">
+        <h3 class="font-bold text-red-900 text-sm border-b pb-1 mb-2">दाखल गुन्हे नोंद (Cases / FIR Records)</h3>
+        {% if profile.cases %}
+        <div class="space-y-2">
+            {% for c in profile.cases %}
+            <div class="bg-white p-3 rounded border border-slate-200 flex flex-wrap justify-between items-center gap-2">
+                <div>
+                    <span class="font-mono font-bold text-red-700 text-xs mr-2">FIR NO:  {{ c.fir_number or 'FIR नोंद नाही'
+                        }}</span>
+                    <span class="font-semibold text-slate-800">कलमे: {{ c.sections or '-' }}</span>
+                </div>
+                <div class="text-slate-600 text-[11px]">
+                    {{ c.other_details or 'इतर तपशील नाही' }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-slate-500">कोणत्याही गुन्ह्याची नोंद नाही.</p>
+        {% endif %}
+    </div>
+
+    <!-- Sathidar (Associates) -->
+    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 text-xs">
+        <h3 class="font-bold text-blue-900 text-sm border-b pb-1 mb-2">साथीदार माहिती (Sathidar)</h3>
+        {% if profile.sathidar %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {% for s in profile.sathidar %}
+            <div class="bg-white p-2.5 rounded border border-slate-200">
+                <p class="font-bold text-slate-800">{{ s.name }}</p>
+                <p class="text-slate-500">मोबाईल: {{ s.number or '-' }} | पत्ता: {{ s.address or '-' }}</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-slate-500">कोणत्याही साथीदारांची नोंद नाही.</p>
+        {% endif %}
+    </div>
+
+    <!-- Extra Dynamic Fields -->
+    {% if profile.custom_fields %}
+    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 text-xs">
+        <h3 class="font-bold text-blue-900 text-sm border-b pb-1 mb-2">अतिरिक्त दाखल माहिती</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {% for k, v in profile.custom_fields.items() %}
+            <div class="bg-white p-2 rounded border">
+                <span class="text-slate-500 block text-[10px] uppercase font-bold">{{ k }}</span>
+                <span class="text-slate-800 font-semibold">{{ v }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Extra Photos Gallery (With Modal Zoom) -->
+    {% if profile.extra_photos %}
+    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 text-xs">
+        <h3 class="font-bold text-blue-900 text-sm border-b pb-2 mb-3">अतिरिक्त छायाचित्रे (मोठे करून पाहण्यासाठी फोटोवर
+            क्लिक करा)</h3>
+        <div class="flex flex-wrap gap-3">
+            {% for pic in profile.extra_photos %}
+            <img src="{{ url_for('static', filename='uploads/' + pic) }}" alt="Extra Photo"
+                onclick="openImageZoom(this.src)"
+                class="w-24 h-24 object-cover rounded border border-slate-300 shadow-sm cursor-pointer hover:opacity-90 hover:scale-105 transition transform"
+                title="मोठे करून पाहण्यासाठी क्लिक करा">
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Footer Actions -->
+    <div class="flex flex-wrap justify-between items-center text-[11px] text-slate-400 border-t pt-3">
+        <span>नोंदणी: {{ profile.created_at.strftime('%Y-%m-%d %H:%M') if profile.created_at else '-' }} (अधिकारी: {{
+            profile.created_by }})</span>
+        <a href="{{ url_for('profiles.list_all') }}" class="text-xs text-blue-700 hover:underline font-bold">&larr; सर्व
+            नोंदींची यादी</a>
+    </div>
+
+</div>
+
+<!-- IMAGE ZOOM LIGHTBOX MODAL -->
+<div id="imageZoomModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
+    <div class="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
+        <button onclick="closeImageZoom()"
+            class="absolute -top-10 right-0 text-white text-3xl font-bold hover:text-red-400 transition">&times;</button>
+        <img id="zoomedImage" src="" alt="Zoomed Photo"
+            class="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain border-2 border-slate-700">
+    </div>
+</div>
+
+<!-- SECURE RE-AUTHENTICATION MODAL FOR UNMASKING -->
+<div id="unmaskModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 border border-slate-200">
+        <h3 class="text-sm font-bold text-slate-900 mb-1">प्रशासकीय प्रमाणीकरण (Verification Required)</h3>
+        <p class="text-xs text-slate-500 mb-4">
+            गोपनीय ओळख क्रमांक पाहण्यासाठी आपला पासवर्ड टाका. ही क्रिया ऑडिट लॉगमध्ये नोंदवली जाईल.
+        </p>
+
+        <input type="password" id="unmask_officer_password" placeholder="आपला पासवर्ड टाका..."
+            class="w-full border border-slate-300 rounded px-3 py-2 text-xs mb-3 outline-none focus:ring-2 focus:ring-blue-600">
+
+        <div class="flex justify-end gap-2">
+            <button type="button" onclick="closeUnmaskModal()"
+                class="px-3 py-1.5 text-xs text-slate-600 hover:underline">
+                रद्द करा (Cancel)
+            </button>
+            <button type="button" onclick="submitUnmaskRequest()"
+                class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-4 py-1.5 rounded text-xs transition">
+                तपासा व दाखवा (Confirm)
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Image Zoom Handlers
+    function openImageZoom(src) {
+        document.getElementById('zoomedImage').src = src;
+        document.getElementById('imageZoomModal').classList.remove('hidden');
+    }
+
+    function closeImageZoom() {
+        document.getElementById('imageZoomModal').classList.add('hidden');
+        document.getElementById('zoomedImage').src = '';
+    }
+
+    // Unmask Handlers
+    let currentTargetDocType = '';
+    let currentTargetElementId = '';
+    const currentProfileId = "{{ profile.profile_id }}";
+
+    function triggerUnmask(docType, elementId) {
+        currentTargetDocType = docType;
+        currentTargetElementId = elementId;
+        document.getElementById('unmask_officer_password').value = '';
+        document.getElementById('unmaskModal').classList.remove('hidden');
+        document.getElementById('unmask_officer_password').focus();
+    }
+
+    function closeUnmaskModal() {
+        document.getElementById('unmaskModal').classList.add('hidden');
+        currentTargetDocType = '';
+        currentTargetElementId = '';
+    }
+
+    function submitUnmaskRequest() {
+        const password = document.getElementById('unmask_officer_password').value.trim();
+        if (!password) {
+            alert("कृपया पासवर्ड प्रविष्ट करा.");
+            return;
+        }
+
+        fetch(`/profiles/api/unmask-doc/${currentProfileId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                officer_password: password,
+                doc_type: currentTargetDocType
+            })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById(currentTargetElementId).innerText = data.unmasked_value;
+                    closeUnmaskModal();
+                } else {
+                    alert(data.message || "प्रमाणीकरण अयशस्वी.");
+                }
+            })
+            .catch(() => {
+                alert("सर्व्हरशी संपर्क होऊ शकला नाही.");
+            });
+    }
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeImageZoom();
+            closeUnmaskModal();
+        }
+    });
+</script>
+{% endblock %}

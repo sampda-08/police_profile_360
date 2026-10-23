@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}{{ t('dashboard') }} - {{ t('app_title') }}{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+    <!-- ROW 1: Greeting & Officer Status Bar -->
+    
+    <div class="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-5 rounded-xl shadow-md border border-slate-700 flex flex-wrap justify-between items-center gap-4">
+        <div>
+            <span class="text-xs font-semibold text-blue-400 uppercase tracking-widest">कर्तव्यरत अधिकारी (Duty Status)</span>
+            <h1 class="text-2xl font-black mt-1">Hello Officer, <span class="text-blue-300">{{ session.get('officer_name', officer_name or user)}}</span>!</h1>
+            <p class="text-xs text-slate-300 mt-1">
+                {{ t('station_label') }}: <span class="font-semibold text-white">{{ station }}</span> | 
+                {{ t('role_label') }}: <span class="font-semibold text-white">{{ role }}</span>
+            </p>
+        </div>
+
+        
+    </div>
+
+
+    <!-- ROW 2: Clickable Total Suspects Card (Navigates to Show All Records) -->
+    <a href="{{ url_for('profiles.list_all') }}" class="block group">
+        <div
+            class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-500 transition-all flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-4">
+                <div
+                    class="w-14 h-14 bg-blue-50 text-blue-700 rounded-xl flex items-center justify-center text-3xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                    📁
+                </div>
+                <div>
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">{{ t('total_profiles')
+                        }}</span>
+                    <div class="text-3xl font-black text-slate-900 group-hover:text-blue-700 transition-colors">{{
+                        profile_count }}</div>
+                    <span class="text-xs text-blue-600 font-semibold">सर्व रेकॉर्ड्स पाहण्यासाठी येथे क्लिक करा (Click
+                        to Show All Records) &rarr;</span>
+                </div>
+            </div>
+            <div class="text-right hidden sm:block">
+                <span
+                    class="text-xs bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full border border-emerald-200">
+                    ● Database Online
+                </span>
+            </div>
+        </div>
+    </a>
+
+
+    <!-- ROW 3: Core Operations Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- 1. New Registration -->
+        <a href="{{ url_for('profiles.create') }}"
+            class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-500 transition-all flex flex-col justify-between group">
+            <div>
+                <div
+                    class="w-12 h-12 bg-blue-100 text-blue-700 rounded-lg flex items-center justify-center text-2xl mb-4 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                    📝
+                </div>
+                <h3 class="font-bold text-slate-900 text-base mb-1">नवीन नोंदणी (New Registration)</h3>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    नवीन संशयिताचे पूर्ण नाव, टोपणनाव, फोटो, ओळख खुणा, संपर्क, गुन्हे व साथीदारांची नोंद दाखल करा.
+                </p>
+            </div>
+            <div
+                class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-700">
+                <span>फॉर्म उघडा</span>
+                <span class="text-base group-hover:translate-x-1 transition-transform">&rarr;</span>
+            </div>
+        </a>
+
+        <!-- 2. Smart Search by Text -->
+        <a href="{{ url_for('search.query') }}"
+            class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-500 transition-all flex flex-col justify-between group">
+            <div>
+                <div
+                    class="w-12 h-12 bg-slate-100 text-slate-700 rounded-lg flex items-center justify-center text-2xl mb-4 group-hover:bg-slate-800 group-hover:text-white transition-colors">
+                    🔍
+                </div>
+                <h3 class="font-bold text-slate-900 text-base mb-1">स्मार्ट टेक्स्ट सर्च (Search by Text)</h3>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    नाव, टोपणनाव, कायमस्वरूपी प्रोफाइल आयडी (Profile ID),किंवा पोलीस ठाण्याद्वारे शोध.
+                </p>
+            </div>
+            <div
+                class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-slate-800">
+                <span>मजकूर शोध पोर्टल</span>
+                <span class="text-base group-hover:translate-x-1 transition-transform">&rarr;</span>
+            </div>
+        </a>
+
+        <!-- 3. Smart Search by Biometrics & Photo -->
+        <a href="{{ url_for('search.biometric_portal') }}"
+            class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-purple-500 transition-all flex flex-col justify-between group">
+            <div>
+                <div
+                    class="w-12 h-12 bg-purple-100 text-purple-700 rounded-lg flex items-center justify-center text-2xl mb-4 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                    🧬
+                </div>
+                <h3 class="font-bold text-purple-950 text-base mb-1">बायोमेट्रिक व फोटो शोध (Biometric & Photo Search)
+                </h3>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Mantra/Morpho USB स्कॅनर, मोबाईल कॅमेरा फ्लॅश ठसा स्कॅन, आणि फेस रेकग्निशन तुलना.
+                </p>
+            </div>
+            <div
+                class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-purple-700">
+                <span>बायोमेट्रिक पोर्टल उघडा</span>
+                <span class="text-base group-hover:translate-x-1 transition-transform">&rarr;</span>
+            </div>
+        </a>
+
+    </div>
+
+</div>
+{% endblock %}

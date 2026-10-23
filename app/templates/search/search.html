@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}स्मार्ट टेक्स्ट शोध - SHORYA 360{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Header Card -->
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+        <h1 class="text-xl font-black text-slate-800">स्मार्ट मजकूर शोध (Smart Text Search)</h1>
+        <p class="text-xs text-slate-500 mt-1">
+            नाव, टोपणनाव, पोलीस ठाणे, जिल्हा व संपर्क क्रमांकावरून शोध घ्या.
+        </p>
+    </div>
+
+    <!-- Multi-Filter Search Panel (FIR Filter Removed) -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <form method="GET" action="{{ url_for('search.query') }}" class="space-y-4">
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <!-- 1. Name / Alias -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">नाव / टोपणनाव (Name / Alias)</label>
+                    <input type="text" name="name" value="{{ q_name }}" placeholder="उदा. रमेश / गण्या" 
+                           class="w-full border border-slate-300 rounded px-3 py-2 text-xs focus:ring-2 focus:ring-blue-600 outline-none">
+                </div>
+
+                <!-- 2. Police Station -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">पोलीस ठाण्याचे नाव (Police Station)</label>
+                    <input type="text" name="station" value="{{ q_station }}" placeholder="उदा. City Kotwali" 
+                           class="w-full border border-slate-300 rounded px-3 py-2 text-xs focus:ring-2 focus:ring-blue-600 outline-none">
+                </div>
+
+                <!-- 3. District -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">जिल्हा (District)</label>
+                    <input type="text" name="district" value="{{ q_district }}" placeholder="उदा. अमरावती" 
+                           class="w-full border border-slate-300 rounded px-3 py-2 text-xs focus:ring-2 focus:ring-blue-600 outline-none">
+                </div>
+
+                <!-- 4. Contact Number -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">संपर्क क्रमांक (Contact)</label>
+                    <input type="text" name="contact" value="{{ q_contact }}" placeholder="उदा. 98XXXXXXXX" 
+                           class="w-full border border-slate-300 rounded px-3 py-2 text-xs focus:ring-2 focus:ring-blue-600 outline-none">
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-wrap justify-between items-center pt-2 border-t border-slate-100 gap-2">
+                <span class="text-[11px] text-slate-400">
+                    * एकापेक्षा अधिक फिल्टर्स भरल्यास सर्व अटी पूर्ण करणारे रेकॉर्ड्स दिसतील.
+                </span>
+                
+                <div class="flex items-center gap-2">
+                    {% if has_searched %}
+                    <a href="{{ url_for('search.query') }}" 
+                       class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-4 py-2 rounded text-xs transition">
+                        फिल्टर्स क्लिअर करा (Reset)
+                    </a>
+                    {% endif %}
+                    <button type="submit" 
+                            class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-6 py-2 rounded text-xs transition shadow-sm">
+                        🔍 शोध घ्या (Apply Search)
+                    </button>
+                </div>
+            </div>
+
+        </form>
+    </div>
+
+    <!-- Search Results View -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+        <div class="p-4 border-b border-slate-100 flex justify-between items-center">
+            <h2 class="text-sm font-bold text-slate-800">
+                शोध निकाल (Search Results)
+            </h2>
+            {% if has_searched %}
+            <span class="text-xs bg-blue-100 text-blue-800 font-bold px-2.5 py-0.5 rounded-full">
+                एकूण सापडलेले: {{ results|length }}
+            </span>
+            {% endif %}
+        </div>
+
+        <table class="w-full text-xs text-left">
+            <thead class="bg-slate-100 text-slate-700 uppercase font-bold border-b">
+                <tr>
+                    <th class="p-3">Profile ID</th>
+                    <th class="p-3">पूर्ण नाव (Full Name)</th>
+                    <th class="p-3">टोपणनाव (Alias)</th>
+                    <th class="p-3">पोलीस ठाणे / जिल्हा</th>
+                    <th class="p-3">संपर्क क्रमांक (Contacts)</th>
+                    <th class="p-3 text-right">तपशील</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200">
+                {% if results %}
+                    {% for p in results %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="p-3 font-mono font-bold text-blue-700 whitespace-nowrap">{{ p.profile_id }}</td>
+                        <td class="p-3 font-bold text-slate-900">{{ p.full_name }}</td>
+                        <td class="p-3 text-slate-600">{{ p.alias or '-' }}</td>
+                        <td class="p-3 text-slate-700">{{ p.station }} ({{ p.district }})</td>
+                        <td class="p-3 font-mono text-slate-600">
+                            {% if p.contacts %}
+                                {{ p.contacts|join(', ') }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="p-3 text-right whitespace-nowrap">
+                            <a href="{{ url_for('profiles.view', profile_id=p.profile_id) }}" 
+                               class="bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold px-2.5 py-1 rounded border border-blue-200 transition">
+                                उघडा &rarr;
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% elif has_searched %}
+                    <tr>
+                        <td colspan="6" class="p-8 text-center text-slate-500">
+                            दिलेल्या शोध अटींनुसार कोणतेही रेकॉर्ड सापडले नाही.
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="p-8 text-center text-slate-500">
+                            शोध सुरू करण्यासाठी वर दिलेले कोणतेही फिल्टर्स भरा आणि "शोध घ्या" बटण दाबा.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+{% endblock %}

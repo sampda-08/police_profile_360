@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+{% block title %}सेटिंग्ज (Settings) - SHORYA 360{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Header Bar -->
+    <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-2">
+        <div>
+            <h1 class="text-xl font-black text-slate-800">⚙️ प्रणाली सेटिंग्ज (System Settings)</h1>
+            <p class="text-xs text-slate-500">प्रशासकीय नियंत्रणे, वापरकर्ता परवानग्या आणि ऑडिट ट्रेल</p>
+        </div>
+        {% if is_admin_unlocked %}
+        <div class="flex items-center gap-3">
+            <span class="text-xs bg-green-100 text-green-800 font-bold px-3 py-1 rounded-full border border-green-200">
+                ● Admin Unlocked
+            </span>
+            <a href="{{ url_for('settings.lock_admin') }}" class="text-xs bg-slate-200 hover:bg-slate-300 px-3 py-1 rounded font-semibold text-slate-700">
+                Lock Admin Tab
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 1. NON-ADMINISTRATOR VIEW: ACCESS RESTRICTED -->
+    {% if not is_admin_user %}
+    <div class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-md border border-slate-200 text-center space-y-4">
+        <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
+            🚫
+        </div>
+        <h2 class="text-lg font-bold text-slate-800">प्रवेश प्रतिबंधित (Access Restricted)</h2>
+        <p class="text-xs text-slate-500 leading-relaxed">
+            सेटिंग्ज व वापरकर्ता अधिकार बदलण्याचा हक्क केवळ <strong>प्रशासक (Administrator)</strong> खात्याला आहे.
+            आपले सध्याचे पद: <span class="font-bold text-slate-700">{{ session.get('role', 'User') }}</span>
+        </p>
+        <a href="{{ url_for('dashboard.index') }}" class="inline-block bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-5 rounded text-xs transition">
+            &larr; मुख्य डॅशबोर्डकडे जा
+        </a>
+    </div>
+
+    <!-- 2. ADMIN USER VIEW: UNLOCK PROMPT -->
+    {% elif not is_admin_unlocked %}
+    <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md border border-slate-200 text-center">
+        <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl font-bold">
+            🔒
+        </div>
+        <h2 class="text-lg font-bold text-slate-800 mb-1">प्रशासक प्रमाणीकरण (Admin Verification)</h2>
+        <p class="text-xs text-slate-500 mb-4">
+            कृपया <strong>{{ session.get('user') }}</strong> खात्याचा पासवर्ड प्रविष्ट करा.
+        </p>
+
+        <form method="POST" action="{{ url_for('settings.unlock_admin') }}" class="space-y-3">
+            <input type="password" name="admin_password" required placeholder="प्रशासक पासवर्ड टाका..."
+                   class="w-full px-3 py-2 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-600 outline-none">
+            <button type="submit" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-4 rounded text-xs transition">
+                पडताळणी करा आणि उघडा (Unlock Admin Tab)
+            </button>
+        </form>
+    </div>
+
+    <!-- 3. UNLOCKED FULL ADMIN PANEL -->
+    {% else %}
+    <div class="space-y-8">
+
+        <!-- १. वापरकर्ता पदानुसार अधिकार (User Roles & Permissions) -->
+        <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+            <div class="border-b pb-3 mb-4">
+                <h2 class="text-base font-bold text-slate-900">१. वापरकर्ता पदानुसार अधिकार (User Roles & Permissions)</h2>
+                <p class="text-xs text-slate-500">नवीन खाती तयार करा, सक्रिय अधिकाऱ्यांची यादी पहा आणि प्रवेश नियंत्रित करा.</p>
+            </div>
+
+            <!-- Role Definitions -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6 text-xs">
+                <div class="p-3 bg-slate-50 rounded border border-slate-200">
+                    <strong class="text-slate-800 block text-sm mb-1">1. Read-Only (वाचक अधिकारी)</strong>
+                    <p class="text-slate-600">केवळ रेकॉर्ड शोधणे आणि पाहणे. संपादन प्रतिबंधित.</p>
+                </div>
+                <div class="p-3 bg-blue-50 rounded border border-blue-200">
+                    <strong class="text-blue-900 block text-sm mb-1">2. Investigator (तपास अधिकारी)</strong>
+                    <p class="text-blue-800">नवीन नोंद (Add), माहिती दुरुस्ती (Edit), आणि बायोमेट्रिक शोध.</p>
+                </div>
+                <div class="p-3 bg-purple-50 rounded border border-purple-200">
+                    <strong class="text-purple-900 block text-sm mb-1">3. Administrator (प्रशासक)</strong>
+                    <p class="text-purple-800">खाती तयार करणे/हटवणे, पासवर्ड बदल आणि सिस्टिम सेटिंग्ज.</p>
+                </div>
+            </div>
+
+            <!-- Create Account Form (With Officer Name Added) -->
+            <form method="POST" action="{{ url_for('settings.add_user') }}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 bg-slate-50 p-4 rounded border mb-6">
+                <!-- 1. Name -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">अधिकाऱ्याचे पूर्ण नाव *</label>
+                    <input type="text" name="name" required placeholder="उदा. Ramesh Pawar" class="w-full border rounded px-2 py-1.5 text-xs bg-white focus:ring-1 focus:ring-blue-600 outline-none">
+                </div>
+                <!-- 2. Username -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">अधिकारी युझर आयडी *</label>
+                    <input type="text" name="username" required placeholder="उदा. MH_INV_102" class="w-full border rounded px-2 py-1.5 text-xs bg-white focus:ring-1 focus:ring-blue-600 outline-none">
+                </div>
+                <!-- 3. Password -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">प्रवेश पासवर्ड *</label>
+                    <input type="password" name="password" required placeholder="पासवर्ड" class="w-full border rounded px-2 py-1.5 text-xs bg-white focus:ring-1 focus:ring-blue-600 outline-none">
+                </div>
+                <!-- 4. Role -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">पद / भूमिका (Role) *</label>
+                    <select name="role" class="w-full border rounded px-2 py-1.5 text-xs bg-white focus:ring-1 focus:ring-blue-600 outline-none">
+                        <option value="Read-Only">1. Read-Only (केवळ वाचक)</option>
+                        <option value="Investigator">2. Investigator (Add, Edit, Update)</option>
+                        <option value="Reviewer">3. Reviewer (पडताळणी अधिकारी)</option>
+                        <option value="Administrator">4. Administrator (प्रशासक)</option>
+                    </select>
+                </div>
+                <!-- 5. Police Station -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">पोलीस ठाणे *</label>
+                    <input type="text" name="station" required placeholder="उदा. City Kotwali" class="w-full border rounded px-2 py-1.5 text-xs bg-white focus:ring-1 focus:ring-blue-600 outline-none">
+                </div>
+                <!-- Submit -->
+                <div class="flex items-end">
+                    <button type="submit" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-1.5 px-3 rounded text-xs transition shadow-sm">
+                        + खाते तयार करा
+                    </button>
+                </div>
+            </form>
+
+            <!-- REGISTERED USERS MANAGEMENT TABLE -->
+            <div class="border border-slate-200 rounded-lg overflow-x-auto">
+                <div class="p-3 bg-slate-100 border-b flex justify-between items-center">
+                    <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        सक्रिय अधिकारी वापरकर्त्यांची यादी (Active Users: {{ users|length }})
+                    </h3>
+                </div>
+                <table class="w-full text-xs text-left">
+                    <thead class="bg-slate-50 text-slate-600 uppercase border-b text-[11px]">
+                        <tr>
+                            <th class="p-3">अधिकाऱ्याचे नाव</th>
+                            <th class="p-3">अधिकारी आयडी</th>
+                            <th class="p-3">पासवर्ड स्थिती</th>
+                            <th class="p-3">पद / भूमिका (Role)</th>
+                            <th class="p-3">पोलीस ठाणे</th>
+                            <th class="p-3 text-right">प्रवेश व्यवस्थापन (Action)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        {% if users %}
+                            {% for u in users %}
+                            <tr class="hover:bg-slate-50 transition-colors">
+                                <td class="p-3 font-bold text-slate-900">
+                                    {{ u.name or u.full_name or '-' }}
+                                </td>
+                                <td class="p-3 font-mono font-semibold text-blue-800">{{ u.username }}</td>
+                                <td class="p-3 font-mono text-slate-500">
+                                    <span class="text-slate-400">••••••••</span>
+                                    <button type="button" onclick="openResetPasswordModal('{{ u.username }}')" 
+                                            class="text-[10px] text-blue-600 hover:underline ml-2 font-sans font-bold">
+                                        बदला (Reset)
+                                    </button>
+                                </td>
+                                <td class="p-3">
+                                    <span class="px-2 py-0.5 rounded font-bold text-[10px]
+                                        {% if u.role == 'Administrator' %}bg-purple-100 text-purple-800 border border-purple-200
+                                        {% elif u.role == 'Investigator' %}bg-blue-100 text-blue-800 border border-blue-200
+                                        {% else %}bg-slate-100 text-slate-800 border border-slate-200{% endif %}">
+                                        {{ u.role }}
+                                    </span>
+                                </td>
+                                <td class="p-3 text-slate-600">{{ u.station or '-' }}</td>
+                                <td class="p-3 text-right whitespace-nowrap">
+                                    {% if u.username != session.get('user') %}
+                                    <form method="POST" action="{{ url_for('settings.remove_user_access', username=u.username) }}" 
+                                          onsubmit="return confirm('खात्री आहे? अधिकारी {{ u.username }} चा सिस्टिम प्रवेश कायमस्वरूपी काढण्यात येईल.');" 
+                                          class="inline-block">
+                                        <button type="submit" class="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold px-2.5 py-1 rounded text-xs transition">
+                                            प्रवेश काढा (Remove Access)
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <span class="text-[10px] bg-slate-100 text-slate-400 font-semibold px-2 py-1 rounded">सध्याचे खाते</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="p-4 text-center text-slate-500">कोणतेही वापरकर्ते सापडले नाहीत.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+
+        <!-- २. बदल, मंजुरी व ऑडिट ट्रेल (Audit History Workflow) -->
+        <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+            <div class="flex flex-wrap justify-between items-center gap-4">
+                <div>
+                    <h2 class="text-base font-bold text-slate-900">२. बदल, मंजुरी व ऑडिट ट्रेल (Audit History Workflow)</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        प्रणालीतील सर्व क्रिया (लॉगिन, शोध, नवीन नोंद, संपादन, अनमास्क) तारीखनिहाय स्वतंत्र पृष्ठावर तपासा.
+                    </p>
+                </div>
+                <div>
+                    <a href="{{ url_for('settings.audit_logs') }}" 
+                       class="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 px-5 rounded-lg text-xs shadow transition">
+                        <span>📋 ऑडिट हिस्ट्री पृष्ठ उघडा (Open Audit History Page)</span>
+                        <span class="text-sm">&rarr;</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ३. रेकॉर्ड हटवा (Delete Records Management) -->
+        <section class="bg-white p-6 rounded-lg shadow-sm border border-red-200">
+            <div class="border-b border-red-100 pb-3 mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-red-600 text-base">🗑️</span>
+                    <h2 class="text-base font-bold text-red-900">३. रेकॉर्ड हटवा (Delete Records Management)</h2>
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5">
+                    Profile ID, नाव किंवा संपूर्ण डेटाबेस एकाच वेळी हटवण्यासाठी खालील पर्यायांचा वापर करा.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <!-- By Profile ID -->
+                <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-bold text-slate-800 mb-1">पर्याय १: Profile ID द्वारे हटवा</h3>
+                        <p class="text-slate-500 text-[11px] mb-3">विशिष्ट संशयिताचे रेकॉर्ड त्याच्या आयडीने हटवा.</p>
+                        <input type="text" id="delete_input_id" placeholder="उदा. POL-2026-XXXXXX" 
+                               class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs bg-white mb-3">
+                    </div>
+                    <button type="button" onclick="confirmDelete('by_id')" 
+                            class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-1.5 px-3 rounded text-xs transition">
+                        Profile ID ने हटवा
+                    </button>
+                </div>
+
+                <!-- By Name -->
+                <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-bold text-slate-800 mb-1">पर्याय २: नावाद्वारे हटवा</h3>
+                        <p class="text-slate-500 text-[11px] mb-3">नाव किंवा टोपणनाव जुळणारे सर्व रेकॉर्ड्स हटवा.</p>
+                        <input type="text" id="delete_input_name" placeholder="उदा. सचिन / गण्या" 
+                               class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs bg-white mb-3">
+                    </div>
+                    <button type="button" onclick="confirmDelete('by_name')" 
+                            class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-1.5 px-3 rounded text-xs transition">
+                        नावाने हटवा
+                    </button>
+                </div>
+
+                <!-- Delete All -->
+                <div class="bg-red-50 p-4 rounded-lg border border-red-200 flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-bold text-red-950 mb-1">पर्याय ३: सर्व रेकॉर्ड्स हटवा (Purge All)</h3>
+                        <p class="text-red-700 text-[11px] mb-3">
+                            डेटाबेसमधील सर्व संशयित प्रोफाइल कायमस्वरूपी मिटवण्यासाठी हा पर्याय वापरा.
+                        </p>
+                    </div>
+                    <button type="button" onclick="confirmDelete('all')" 
+                            class="w-full bg-red-800 hover:bg-red-900 text-white font-bold py-1.5 px-3 rounded text-xs transition shadow-sm">
+                        ⚠️ सर्व रेकॉर्ड्स हटवा (Delete All)
+                    </button>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ४. ॲडमिनसाठी नवीन फील्ड निर्मिती अधिकार -->
+        <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+            <div class="border-b pb-3 mb-4">
+                <h2 class="text-base font-bold text-slate-900">४. ॲडमिनसाठी नवीन फील्ड निर्मिती अधिकार (Admin Exclusive Setting)</h2>
+                <p class="text-xs text-slate-500">
+                    येथे जोडलेले फील्ड संपूर्ण सिस्टिममधील सर्व अधिकाऱ्यांसाठी कायमस्वरूपी टेम्पलेट म्हणून दिसेल.
+                </p>
+            </div>
+
+            <form method="POST" action="{{ url_for('settings.add_permanent_field') }}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 p-4 rounded border">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">इंग्रजी फील्ड की (Code Name) *</label>
+                    <input type="text" name="field_name" required placeholder="उदा. vehicle_number" class="w-full border rounded px-2 py-1.5 text-xs bg-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">मराठी लेबल (Display Name) *</label>
+                    <input type="text" name="field_label_marathi" required placeholder="उदा. वाहन क्रमांक" class="w-full border rounded px-2 py-1.5 text-xs bg-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">माहिती प्रकार (Type) *</label>
+                    <select name="field_type" class="w-full border rounded px-2 py-1.5 text-xs bg-white">
+                        <option value="text">मजकूर (Text)</option>
+                        <option value="number">संख्या (Number)</option>
+                        <option value="date">तारीख (Date)</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-1.5 px-3 rounded text-xs transition">
+                        + कायमस्वरूपी फील्ड जोडा
+                    </button>
+                </div>
+            </form>
+        </section>
+
+    </div>
+    {% endif %}
+</div>
+
+<!-- RESET PASSWORD MODAL -->
+<div id="resetPasswordModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 border border-slate-300">
+        <h3 class="text-sm font-bold text-slate-900 mb-1">पासवर्ड बदला (Reset Password)</h3>
+        <p class="text-xs text-slate-500 mb-3">
+            अधिकारी <strong id="resetTargetUser" class="text-blue-700"></strong> साठी नवीन प्रवेश पासवर्ड प्रविष्ट करा:
+        </p>
+
+        <form id="resetPasswordForm" method="POST" action="" class="space-y-3">
+            <input type="password" name="new_password" required placeholder="नवीन पासवर्ड टाका..." 
+                   class="w-full border border-slate-300 rounded px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-600">
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="closeResetPasswordModal()" class="px-3 py-1.5 text-xs text-slate-600 hover:underline">
+                    रद्द करा
+                </button>
+                <button type="submit" class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-4 py-1.5 rounded text-xs transition">
+                    पासवर्ड सेव्ह करा
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- SECURE DELETE CONFIRMATION MODAL -->
+<div id="deleteModal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-red-300">
+        <div class="flex items-center gap-2 text-red-600 font-black text-base mb-2">
+            <span>⚠️</span>
+            <span>रेकॉर्ड हटवण्याची पुष्टी करा (Confirm Deletion)</span>
+        </div>
+        
+        <p id="deleteModalDesc" class="text-xs text-slate-600 mb-4 leading-relaxed"></p>
+
+        <form method="POST" action="{{ url_for('settings.delete_records') }}" class="space-y-4">
+            <input type="hidden" name="delete_mode" id="modal_delete_mode" value="">
+            <input type="hidden" name="target_profile_id" id="modal_target_id" value="">
+            <input type="hidden" name="target_name" id="modal_target_name" value="">
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">
+                    क्रिया पूर्ण करण्यासाठी प्रशासक पासवर्ड टाका:
+                </label>
+                <input type="password" name="confirm_admin_password" required placeholder="प्रशासक पासवर्ड" 
+                       class="w-full border border-slate-300 rounded px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-red-600">
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2 border-t">
+                <button type="button" onclick="closeDeleteModal()" 
+                        class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded">
+                    रद्द करा
+                </button>
+                <button type="submit" 
+                        class="bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-5 rounded text-xs shadow transition">
+                    कायमस्वरूपी हटवा
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Reset Password Modal
+function openResetPasswordModal(username) {
+    document.getElementById('resetTargetUser').innerText = username;
+    document.getElementById('resetPasswordForm').action = `/settings/users/reset-password/${encodeURIComponent(username)}`;
+    document.getElementById('resetPasswordModal').classList.remove('hidden');
+}
+
+function closeResetPasswordModal() {
+    document.getElementById('resetPasswordModal').classList.add('hidden');
+}
+
+// Delete Suspects Modal
+function confirmDelete(mode) {
+    const modal = document.getElementById('deleteModal');
+    const modeInput = document.getElementById('modal_delete_mode');
+    const idInput = document.getElementById('modal_target_id');
+    const nameInput = document.getElementById('modal_target_name');
+    const desc = document.getElementById('deleteModalDesc');
+
+    modeInput.value = mode;
+    idInput.value = '';
+    nameInput.value = '';
+
+    if (mode === 'by_id') {
+        const val = document.getElementById('delete_input_id').value.trim();
+        if (!val) { alert("कृपया Profile ID टाका."); return; }
+        idInput.value = val;
+        desc.innerHTML = `तुम्ही Profile ID: <strong class="text-red-700">${val}</strong> चे रेकॉर्ड हटवण्यास तयार आहात.`;
+    } 
+    else if (mode === 'by_name') {
+        const val = document.getElementById('delete_input_name').value.trim();
+        if (!val) { alert("कृपया नाव टाका."); return; }
+        nameInput.value = val;
+        desc.innerHTML = `तुम्ही नाव/टोपणनाव: <strong class="text-red-700">${val}</strong> शी संबंधित सर्व रेकॉर्ड्स हटवण्यास तयार आहात.`;
+    } 
+    else if (mode === 'all') {
+        desc.innerHTML = `<span class="text-red-700 font-bold">धोका!</span> तुम्ही डेटाबेसमधील <strong class="text-red-700">सर्व संशयित रेकॉर्ड्स</strong> पूर्णपणे नष्ट करण्यास तयार आहात.`;
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.add('hidden');
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeDeleteModal();
+        closeResetPasswordModal();
+    }
+});
+</script>
+{% endblock %}

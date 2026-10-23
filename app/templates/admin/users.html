@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}वापरकर्ता व्यवस्थापन - SHORYA 360{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
+
+    <!-- Header -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <h1 class="text-xl font-black text-slate-800">१. वापरकर्ता पदानुसार अधिकार (User Roles & Permissions)</h1>
+        <p class="text-xs text-slate-500 mt-1">नवीन खाती तयार करा, सक्रिय अधिकाऱ्यांची यादी पहा आणि प्रवेश नियंत्रित करा.</p>
+        
+        <!-- Role Badges Description -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 text-xs">
+            <div class="p-4 rounded-lg border border-slate-200 bg-slate-50">
+                <span class="font-bold text-slate-800">1. Read-Only (वाचक अधिकारी)</span>
+                <p class="text-slate-500 mt-1">केवळ रेकॉर्ड शोधणे आणि पाहणे. संपादन प्रतिबंधित.</p>
+            </div>
+            <div class="p-4 rounded-lg border border-blue-200 bg-blue-50/50">
+                <span class="font-bold text-blue-900">2. Investigator (तपास अधिकारी)</span>
+                <p class="text-blue-700 mt-1">नवीन नोंद (Add), माहिती दुरुस्ती (Edit), आणि बायोमेट्रिक शोध.</p>
+            </div>
+            <div class="p-4 rounded-lg border border-purple-200 bg-purple-50/50">
+                <span class="font-bold text-purple-900">3. Administrator (प्रशासक)</span>
+                <p class="text-purple-700 mt-1">खाती तयार करणे/हटवणे, पासवर्ड बदल आणि सिस्टिम सेटिंग्ज.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create User Form Card -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">+ नवीन अधिकारी खाते जोडा (Add New Officer Account)</h2>
+
+        <form method="POST" action="{{ url_for('admin.create_user') }}" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 items-end text-xs">
+                
+                <!-- 1. Officer Full Name -->
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">अधिकाऱ्याचे पूर्ण नाव *</label>
+                    <input type="text" name="name" required placeholder=""
+                           class="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-600 outline-none text-xs">
+                </div>
+
+                <!-- 2. Officer User ID (Username) -->
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">अधिकारी युझर आयडी *</label>
+                    <input type="text" name="username" required placeholder="उदा. MH_INV_102"
+                           class="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-600 outline-none text-xs">
+                </div>
+
+                <!-- 3. Password -->
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">प्रवेश पासवर्ड *</label>
+                    <input type="password" name="password" required placeholder="••••••••"
+                           class="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-600 outline-none text-xs">
+                </div>
+
+                <!-- 4. Role -->
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">पद / भूमिका (Role) *</label>
+                    <select name="role" required class="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-600 outline-none text-xs">
+                        <option value="Read-Only">1. Read-Only (केवळ वाचक)</option>
+                        <option value="Investigator">2. Investigator (तपास अधिकारी)</option>
+                        <option value="Administrator">3. Administrator (प्रशासक)</option>
+                    </select>
+                </div>
+
+                <!-- 5. Police Station -->
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">पोलीस ठाणे *</label>
+                    <input type="text" name="station" required placeholder="उदा. City Kotwali"
+                           class="w-full border border-slate-300 rounded px-3 py-2 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-600 outline-none text-xs">
+                </div>
+
+            </div>
+
+            <div class="flex justify-end pt-2">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2 rounded text-xs transition shadow-sm">
+                    + खाते तयार करा
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Active Officers Table -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+        <table class="w-full text-xs text-left">
+            <thead class="bg-slate-50 text-slate-600 uppercase font-bold border-b border-slate-200">
+                <tr>
+                    <th class="p-3.5">अधिकाऱ्याचे नाव (NAME)</th>
+                    <th class="p-3.5">युझर आयडी (USERNAME)</th>
+                    <th class="p-3.5">भूमिका (ROLE)</th>
+                    <th class="p-3.5">पोलीस ठाणे</th>
+                    <th class="p-3.5">स्थिती</th>
+                    <th class="p-3.5 text-right">कृती</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% if users %}
+                    {% for u in users %}
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="p-3.5 font-bold text-slate-900">
+                            {{ u.name or u.full_name or '-' }}
+                        </td>
+                        <td class="p-3.5 font-mono text-blue-700 font-semibold">
+                            {{ u.username }}
+                        </td>
+                        <td class="p-3.5">
+                            <span class="inline-block px-2 py-0.5 rounded text-[11px] font-bold
+                                {% if u.role == 'Administrator' %} bg-purple-50 text-purple-700 border border-purple-200
+                                {% elif u.role == 'Investigator' %} bg-blue-50 text-blue-700 border border-blue-200
+                                {% else %} bg-slate-100 text-slate-700 border border-slate-200 {% endif %}">
+                                {{ u.role }}
+                            </span>
+                        </td>
+                        <td class="p-3.5 text-slate-700">
+                            {{ u.station or '-' }}
+                        </td>
+                        <td class="p-3.5">
+                            {% if u.is_locked %}
+                                <span class="text-red-600 font-semibold">Locked</span>
+                            {% else %}
+                                <span class="text-emerald-600 font-semibold">Active</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-3.5 text-right">
+                            {% if u.username != 'admin' %}
+                            <form method="POST" action="{{ url_for('admin.delete_user', username=u.username) }}" onsubmit="return confirm('खाते कायमचे हटवायचे आहे का?');" class="inline">
+                                <button type="submit" class="text-red-600 hover:text-red-800 font-bold hover:underline">
+                                    हटवा
+                                </button>
+                            </form>
+                            {% else %}
+                                <span class="text-slate-400 italic">Primary</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="p-6 text-center text-slate-400">कोणतेही खाते सापडले नाही.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+{% endblock %}

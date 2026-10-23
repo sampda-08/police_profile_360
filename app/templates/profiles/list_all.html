@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}सर्व संशयित रेकॉर्ड्स - SHORYA 360{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Top Summary & Filter Header -->
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-xl font-black text-slate-800">सर्व संशयित रेकॉर्ड्स (All Suspect Records)</h1>
+            <p class="text-xs text-slate-500 mt-0.5">अंतर्गत डेटाबेसमध्ये नोंदवलेले सर्व गुन्हेगार प्रोफाइल तपशील</p>
+        </div>
+
+        <div class="flex items-center gap-3 w-full md:w-auto">
+            <!-- Client-side Quick Filter Input -->
+            <input type="text" id="quickFilterInput" onkeyup="filterProfilesTable()" 
+                   placeholder="यादीतून त्वरित शोधा (Filter)..." 
+                   class="w-full md:w-64 border border-slate-300 rounded-lg px-3 py-1.5 text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-600 outline-none">
+            
+            <a href="{{ url_for('profiles.create') }}" 
+               class="whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg transition shadow-sm">
+                + नवीन नोंद
+            </a>
+        </div>
+    </div>
+
+    <!-- Suspects Table -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+        <table class="w-full text-xs text-left" id="profilesTable">
+            <thead class="bg-slate-50 text-slate-600 uppercase font-bold border-b border-slate-200 tracking-wider">
+                <tr>
+                    <th class="p-3.5">PROFILE ID</th>
+                    <th class="p-3.5">पूर्ण नाव (FULL NAME)</th>
+                    <th class="p-3.5">टोपणनाव (ALIAS)</th>
+                    <th class="p-3.5">पोलीस ठाणे / जिल्हा</th>
+                    <th class="p-3.5">FIR क्रमांक (FIR NO)</th>
+                    <th class="p-3.5 text-right">कृती (ACTION)</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% if profiles and profiles|length > 0 %}
+                    {% for p in profiles %}
+                    <tr class="hover:bg-slate-50/80 transition profile-row">
+                        <!-- Profile ID -->
+                        <td class="p-3.5 font-mono font-bold text-blue-700 whitespace-nowrap">
+                            {{ p.profile_id }}
+                        </td>
+
+                        <!-- Full Name -->
+                        <td class="p-3.5 font-bold text-slate-900">
+                            {{ p.full_name }}
+                        </td>
+
+                        <!-- Alias -->
+                        <td class="p-3.5 text-slate-600">
+                            {{ p.alias if p.alias else '-' }}
+                        </td>
+
+                        <!-- Police Station / District (No empty brackets) -->
+                        <td class="p-3.5 text-slate-700">
+                            {{ p.station if p.station else '-' }}
+                            {% set dist = (p.address.dist if p.address and p.address.dist else p.district) %}
+                            {% if dist %}
+                                <span class="text-slate-500 font-medium">({{ dist }})</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- FIR Numbers (Array of cases rendered properly) -->
+                        <td class="p-3.5">
+                            {% set fir_list = [] %}
+                            {% if p.cases and p.cases is iterable %}
+                                {% for c in p.cases %}
+                                    {% if c.fir_number and c.fir_number.strip() %}
+                                        {% set _ = fir_list.append(c.fir_number) %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+
+                            {% if fir_list|length > 0 %}
+                                <div class="flex flex-wrap gap-1">
+                                    {% for fir in fir_list %}
+                                        <span class="inline-block bg-red-50 text-red-700 border border-red-200 font-mono font-semibold px-2 py-0.5 rounded text-[11px]">
+                                            {{ fir }}
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            {% elif p.fir_number %}
+                                <span class="inline-block bg-red-50 text-red-700 border border-red-200 font-mono font-semibold px-2 py-0.5 rounded text-[11px]">
+                                    {{ p.fir_number }}
+                                </span>
+                            {% else %}
+                                <span class="text-slate-400">-</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Action Link -->
+                        <td class="p-3.5 text-right whitespace-nowrap">
+                            <a href="{{ url_for('profiles.view', profile_id=p.profile_id) }}" 
+                               class="inline-block bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold px-3 py-1.5 rounded-lg border border-blue-200 transition">
+                                प्रोफाइल उघडा &rarr;
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="p-8 text-center text-slate-400">
+                            कोणतीही संशयित नोंद उपलब्ध नाही.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<!-- Realtime Table Filter Script -->
+<script>
+function filterProfilesTable() {
+    const input = document.getElementById("quickFilterInput");
+    const filter = input.value.toLowerCase().trim();
+    const rows = document.querySelectorAll("#profilesTable tbody tr.profile-row");
+
+    rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        if (text.includes(filter)) {
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}बायोमेट्रिक व फोटो शोध - Police Profile 360{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Page Header -->
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+        <h1 class="text-xl font-black text-slate-800">मल्टी-मोडल बायोमेट्रिक व फोटो शोध (Biometric Search Portal)</h1>
+        <p class="text-xs text-slate-500 mt-1">
+            १००% अंतर्गत डेटाबेस शोध — कोणताही डेटा बाह्य सर्व्हरवर पाठवला जात नाही (Zero External Leak)
+        </p>
+    </div>
+
+    <!-- 3 Core Search Modalities -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- 1. USB / OTG FINGERPRINT SCANNER -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div>
+                <div class="flex items-center space-x-3 mb-3">
+                    <span class="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xl">🔌</span>
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-sm">१. USB / OTG बायोमेट्रिक स्कॅनर</h3>
+                        <span class="text-[10px] text-slate-500">Mantra MFS100 / Morpho MSO</span>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-600 mb-4">
+                    लॅपटॉप किंवा मोबाईलला OTG ने स्कॅनर जोडून संशयिताचा अंगठा स्कॅन करा व थेट १:N तुलना करा[cite: 2].
+                </p>
+                <div class="bg-slate-50 p-4 rounded-lg border text-center mb-4">
+                    <div id="usb-status" class="text-xs font-semibold text-slate-500">स्कॅनर कनेक्टेड नाही (Disconnected)</div>
+                </div>
+            </div>
+            <button onclick="captureUSBScanner()" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 rounded text-xs transition">
+                अंगठा स्कॅन करा (Capture Thumb)
+            </button>
+        </div>
+
+
+        <!-- 2. TOUCHLESS MOBILE CAMERA SCANNER (FLASHLIGHT) -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div>
+                <div class="flex items-center space-x-3 mb-3">
+                    <span class="w-10 h-10 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xl">📸</span>
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-sm">२. मोबाईल मागील कॅमेरा</h3>
+                        <span class="text-[10px] text-amber-600 font-semibold">Touchless Scanner + Flashlight[cite: 2]</span>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-600 mb-4">
+                    मैदानावर हार्डवेअर नसल्यास, फोनचा मागील कॅमेरा फ्लॅश सुरू करून अंगठ्याचा मॅक्रो फोटो घेईल[cite: 2].
+                </p>
+                <div class="relative bg-slate-900 rounded-lg overflow-hidden h-40 flex items-center justify-center mb-4">
+                    <video id="touchless-video" class="w-full h-full object-cover hidden" autoplay playsinline></video>
+                    <canvas id="touchless-canvas" class="hidden"></canvas>
+                    <div id="camera-placeholder" class="text-xs text-slate-400 text-center px-4">
+                        कॅमेरा सुरू करण्यासाठी खालील बटण दाबा
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="startTorchCamera()" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded text-xs transition">
+                    कॅमेरा सुरू करा
+                </button>
+                <button onclick="captureMacroThumb()" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 rounded text-xs transition">
+                    फोटो घ्या
+                </button>
+            </div>
+        </div>
+
+
+        <!-- 3. PHOTO / FACE SEARCH -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div>
+                <div class="flex items-center space-x-3 mb-3">
+                    <span class="w-10 h-10 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xl">👤</span>
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-sm">३. फोटोद्वारे शोध (Face Search)</h3>
+                        <span class="text-[10px] text-purple-600 font-semibold">FaceNet 1:N Comparison</span>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-600 mb-4">
+                    संशयिताचा जुना किंवा घटनास्थळावरील फोटो अपलोड करताच अंतर्गत रेकॉर्ड्समधील चेहऱ्यांशी तुलना होईल[cite: 2].
+                </p>
+                <div class="bg-slate-50 p-4 rounded-lg border mb-4 text-center">
+                    <input type="file" id="faceInput" accept="image/*" class="text-xs text-slate-500 w-full mb-2">
+                    <span class="text-[10px] text-slate-400">JPG, PNG फॉरमॅट स्वीकार्य</span>
+                </div>
+            </div>
+            <button onclick="submitFaceSearch()" class="w-full bg-purple-700 hover:bg-purple-800 text-white font-bold py-2 rounded text-xs transition">
+                चेहरा जुळवणी करा (Match Face)
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Match Results Notification / Modal Area -->
+    <div id="results-panel" class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hidden">
+        <h3 class="font-bold text-sm text-slate-800 mb-2">बायोमेट्रिक शोध निकाल (Biometric Match Result)</h3>
+        <div id="results-content" class="text-xs text-slate-600"></div>
+    </div>
+
+</div>
+
+<!-- Biometric Hardware & WebRTC JavaScript Handler -->
+<script src="{{ url_for('static', filename='js/biometric_search.js') }}"></script>
+{% endblock %}

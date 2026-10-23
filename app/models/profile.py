@@ -3,6 +3,7 @@ import os
 import unicodedata
 from datetime import datetime, date
 from werkzeug.utils import secure_filename
+from app.utils.image_handler import process_and_encode_image
 
 def clean_text(text: str) -> str:
     if not text:
@@ -24,10 +25,6 @@ class SuspectProfile:
 
     @staticmethod
     def validate_dob(dob_str: str) -> bool:
-        """
-        Validates that Date of Birth does not exceed today's date.
-        Returns True if valid or empty, False if in the future.
-        """
         if not dob_str:
             return True
         try:
@@ -38,26 +35,20 @@ class SuspectProfile:
 
     @staticmethod
     def build_profile_document(form_data, files, profile_id, current_officer):
-        # 1. Main Photo
-        main_photo_name = ""
+        # 1. Main Photo (Compressed Base64 in Memory)
+        main_photo_b64 = ""
         if 'main_photo' in files and files['main_photo'].filename != '':
-            file = files['main_photo']
-            main_photo_name = f"{profile_id}_main_{secure_filename(file.filename)}"
-            upload_dir = os.path.join('app', 'static', 'uploads')
-            os.makedirs(upload_dir, exist_ok=True)
-            file.save(os.path.join(upload_dir, main_photo_name))
+            main_photo_b64 = process_and_encode_image(files['main_photo']) or ""
 
-        # 2. Extra Photos
-        extra_photos = []
+        # 2. Extra Photos (Compressed Base64 in Memory)
+        extra_photos_b64 = []
         if 'extra_photos' in files:
             uploaded_files = files.getlist('extra_photos')
-            upload_dir = os.path.join('app', 'static', 'uploads')
-            os.makedirs(upload_dir, exist_ok=True)
-            for idx, file in enumerate(uploaded_files):
+            for file in uploaded_files:
                 if file.filename != '':
-                    filename = f"{profile_id}_extra_{idx}_{secure_filename(file.filename)}"
-                    file.save(os.path.join(upload_dir, filename))
-                    extra_photos.append(filename)
+                    encoded_pic = process_and_encode_image(file)
+                    if encoded_pic:
+                        extra_photos_b64.append(encoded_pic)
 
         # 3. Dynamic Contacts
         contact_numbers = [clean_text(num) for num in form_data.getlist('contact_numbers[]') if num.strip()]
@@ -102,7 +93,7 @@ class SuspectProfile:
 
         return {
             "profile_id": profile_id,
-            "main_photo": main_photo_name,
+            "main_photo": main_photo_b64,
             "full_name": clean_text(form_data.get('full_name', '')),
             "alias": clean_text(form_data.get('alias', '')),
             "dob": form_data.get('dob', ''),
@@ -120,12 +111,12 @@ class SuspectProfile:
             },
             "contacts": contact_numbers,
             "identity_docs": {
-                "aadhaar_card_no": clean_text(form_data.get('aadhaar_no', '')),
-                "pan_card_no": clean_text(form_data.get('pan_no', ''))
+                "aadhaar_card_no": clean_text(form_data.get('aadhaar_card_no') or form_data.get('aadhaar_no', '')),
+                "pan_card_no": clean_text(form_data.get('pan_card_no') or form_data.get('pan_no', '')).upper()
             },
             "sathidar": sathidar_list,
             "cases": cases_list,
-            "extra_photos": extra_photos,
+            "extra_photos": extra_photos_b64,
             "tadipar": {
                 "status": form_data.get('tadipar_status', 'No'),
                 "order_details": clean_text(form_data.get('tadipar_details', ''))

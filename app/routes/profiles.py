@@ -2,7 +2,6 @@ import os
 import re
 from datetime import datetime, date
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, abort, jsonify
-from werkzeug.utils import secure_filename
 from pymongo.errors import DuplicateKeyError
 from app import db
 from app.models.profile import SuspectProfile, clean_text
@@ -10,6 +9,7 @@ from app.models.user import User
 from app.models.audit import AuditLog
 from app.utils.decorators import login_required, role_required
 from app.utils.maskers import mask_id_number
+from app.utils.image_handler import process_and_encode_image
 
 profiles_bp = Blueprint('profiles', __name__)
 
@@ -28,7 +28,6 @@ def create():
         aadhaar = clean_text(request.form.get('aadhaar_card_no', ''))
         pan = clean_text(request.form.get('pan_card_no', '')).upper()
 
-        # 1. MANDATORY DOB VALIDATION
         if not dob:
             flash("जन्मतारीख प्रविष्ट करणे अनिवार्य आहे (Date of Birth is mandatory).", "danger")
             return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form)
@@ -37,7 +36,6 @@ def create():
             flash("जन्मतारीख आजच्या तारखेपेक्षा पुढे असू शकत नाही.", "danger")
             return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form)
 
-        # 2. MANDATORY AADHAAR VALIDATION (Numbers only, 12 digits)
         if not aadhaar:
             flash("आधार कार्ड क्रमांक प्रविष्ट करणे अनिवार्य आहे (Aadhaar Card is mandatory).", "danger")
             return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form)
@@ -46,7 +44,6 @@ def create():
             flash("आधार क्रमांक फक्त १२ अंकी संख्या असणे आवश्यक आहे (Aadhaar must be exactly 12 numeric digits).", "danger")
             return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form)
 
-        # 3. MANDATORY PAN VALIDATION (Standard PAN Format: 5 Letters, 4 Digits, 1 Letter)
         if not pan:
             flash("पॅन कार्ड क्रमांक प्रविष्ट करणे अनिवार्य आहे (PAN Card is mandatory).", "danger")
             return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form)
@@ -55,7 +52,6 @@ def create():
             flash("अवैध पॅन क्रमांक स्वरूप! योग्य नमुना: ABCDE1234F (Invalid PAN Card format).", "danger")
             return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form)
 
-        # 4. DUPLICATE IDENTITY CHECKS
         existing_aadhaar = db.profiles.find_one({"identity_docs.aadhaar_card_no": aadhaar})
         if existing_aadhaar:
             flash(
@@ -74,7 +70,6 @@ def create():
             )
             return redirect(url_for('profiles.view', profile_id=existing_pan['profile_id']))
 
-        # 5. DEMOGRAPHIC DUPLICATE CHECK (Name + DOB)
         if full_name:
             existing_person = db.profiles.find_one({
                 "full_name": {"$regex": f"^{re.escape(full_name)}$", "$options": "i"},
@@ -88,7 +83,6 @@ def create():
                 )
                 return redirect(url_for('profiles.view', profile_id=existing_person['profile_id']))
 
-        # --- BUILD & INSERT DOCUMENT ---
         profile_id = SuspectProfile.generate_profile_id(db)
         profile_doc = SuspectProfile.build_profile_document(
             form_data=request.form,
@@ -147,13 +141,13 @@ def view(profile_id):
 @login_required
 def unmask_sensitive_doc(profile_id):
     if db is None:
-        return jsonify({"success": False, "message": "डेटाबेस अनुपलब्ध आहे."}), 503
+        return jsonify({"success": False, "message": "डेटाबेस अनुपलब्ध आहे (Database offline)."}), 503
 
-    current_user = session.get('user', '')
+    current_user = session.get('user', '').strip()
     current_role = session.get('role', 'Read-Only')
     payload = request.get_json(silent=True) or {}
     entered_password = payload.get('officer_password', '').strip()
-    doc_type = payload.get('doc_type', '')
+    doc_type = payload.get('doc_type', '').strip()
 
     if current_role == 'Read-Only':
         AuditLog.create_entry(
@@ -164,12 +158,20 @@ def unmask_sensitive_doc(profile_id):
         )
         return jsonify({"success": False, "message": "वाचक अधिकाऱ्यांना मूळ ओळख क्रमांक पाहण्याची परवानगी नाही."}), 403
 
-    user_record = db.users.find_one({"username": current_user})
-    is_authenticated = False
+    if not entered_password:
+        return jsonify({"success": False, "message": "कृपया पासवर्ड प्रविष्ट करा."}), 400
 
-    if user_record and User.verify_password(user_record.get('password_hash'), entered_password):
-        is_authenticated = True
-    elif entered_password == "admin123":
+    user_record = db.users.find_one({
+        "username": {"$regex": f"^{re.escape(current_user)}$", "$options": "i"}
+    })
+
+    is_authenticated = False
+    if user_record:
+        stored_hash = user_record.get('password_hash') or user_record.get('password')
+        if stored_hash and User.verify_password(stored_hash, entered_password):
+            is_authenticated = True
+
+    if not is_authenticated and entered_password == "admin123":
         is_authenticated = True
 
     if not is_authenticated:
@@ -245,14 +247,13 @@ def edit(profile_id):
         if record.get('tadipar', {}).get('status') != new_tadipar:
             changed_fields.append(f"Tadipar: '{record.get('tadipar', {}).get('status')}' -> '{new_tadipar}'")
 
-        main_photo_name = record.get('main_photo', '')
+        # In-Memory Main Photo Compression
+        main_photo_data = record.get('main_photo', '')
         if 'main_photo' in request.files and request.files['main_photo'].filename != '':
-            file = request.files['main_photo']
-            main_photo_name = f"{profile_id}_main_{secure_filename(file.filename)}"
-            upload_dir = os.path.join('app', 'static', 'uploads')
-            os.makedirs(upload_dir, exist_ok=True)
-            file.save(os.path.join(upload_dir, main_photo_name))
-            changed_fields.append("Main Photo Updated")
+            new_encoded = process_and_encode_image(request.files['main_photo'])
+            if new_encoded:
+                main_photo_data = new_encoded
+                changed_fields.append("Main Photo Updated (Compressed Base64)")
 
         fir_numbers = request.form.getlist('fir_number[]')
         sections_list = request.form.getlist('sections[]')
@@ -284,7 +285,7 @@ def edit(profile_id):
             "full_name": new_name,
             "alias": new_alias,
             "dob": dob,
-            "main_photo": main_photo_name,
+            "main_photo": main_photo_data,
             "identification_mark": clean_text(request.form.get('identification_mark', '')),
             "station": new_station,
             "address.village_city": clean_text(request.form.get('village_city', '')),
@@ -366,20 +367,19 @@ def append_details(profile_id):
             push_updates["sathidar"] = {"$each": appended_sathidars}
             audit_summary.append(f"Added {len(appended_sathidars)} sathidar(s)")
 
-        appended_photos = []
+        # In-Memory Extra Photos Compression
+        appended_photos_b64 = []
         if 'new_extra_photos' in request.files:
             uploaded_files = request.files.getlist('new_extra_photos')
-            upload_dir = os.path.join('app', 'static', 'uploads')
-            os.makedirs(upload_dir, exist_ok=True)
-            for idx, file in enumerate(uploaded_files):
+            for file in uploaded_files:
                 if file.filename != '':
-                    filename = f"{profile_id}_extra_{int(datetime.utcnow().timestamp())}_{idx}_{secure_filename(file.filename)}"
-                    file.save(os.path.join(upload_dir, filename))
-                    appended_photos.append(filename)
+                    encoded_pic = process_and_encode_image(file)
+                    if encoded_pic:
+                        appended_photos_b64.append(encoded_pic)
 
-        if appended_photos:
-            push_updates["extra_photos"] = {"$each": appended_photos}
-            audit_summary.append(f"Uploaded {len(appended_photos)} photo(s)")
+        if appended_photos_b64:
+            push_updates["extra_photos"] = {"$each": appended_photos_b64}
+            audit_summary.append(f"Uploaded {len(appended_photos_b64)} photo(s) to MongoDB Atlas")
 
         if push_updates:
             db.profiles.update_one(

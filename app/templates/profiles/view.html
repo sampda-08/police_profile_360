@@ -7,10 +7,20 @@
     <div class="flex flex-wrap justify-between items-start border-b pb-4 gap-4">
         <div class="flex items-center space-x-4">
             {% if profile.main_photo %}
-            <img src="{{ url_for('static', filename='uploads/' + profile.main_photo) }}" alt="Main Photo"
-                onclick="openImageZoom(this.src)"
-                class="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg border-2 border-slate-300 shadow-sm cursor-pointer hover:opacity-90 hover:ring-2 hover:ring-blue-600 transition"
-                title="मोठे करून पाहण्यासाठी क्लिक करा">
+                {% if profile.main_photo.startswith('data:') %}
+                    <!-- In-Memory Base64 from MongoDB Atlas -->
+                    <img src="{{ profile.main_photo }}" alt="Main Photo"
+                        onclick="openImageZoom(this.src)"
+                        class="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg border-2 border-slate-300 shadow-sm cursor-pointer hover:opacity-90 hover:ring-2 hover:ring-blue-600 transition"
+                        title="मोठे करून पाहण्यासाठी क्लिक करा">
+                {% else %}
+                    <!-- Legacy Uploaded Static File -->
+                    <img src="{{ url_for('static', filename='uploads/' + profile.main_photo) }}" alt="Main Photo"
+                        onclick="openImageZoom(this.src)"
+                        onerror="this.onerror=null; this.src='https://placehold.co/150x180?text=No+Photo';"
+                        class="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg border-2 border-slate-300 shadow-sm cursor-pointer hover:opacity-90 hover:ring-2 hover:ring-blue-600 transition"
+                        title="मोठे करून पाहण्यासाठी क्लिक करा">
+                {% endif %}
             {% else %}
             <div
                 class="w-20 h-20 bg-slate-200 rounded-lg flex items-center justify-center text-xs text-slate-500 font-bold">
@@ -36,16 +46,13 @@
 
             <!-- Edit Profile Button -->
             {% if session.get('role') in ['Administrator', 'Investigator'] %}
-            <!-- Top Right Action Controls in view.html -->
             <div class="mt-3 flex justify-end gap-2">
                 {% if session.get('role') == 'Administrator' %}
-                <!-- Admin Only: Full Edit Access -->
                 <a href="{{ url_for('profiles.edit', profile_id=profile.profile_id) }}"
                     class="inline-flex items-center gap-1 bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded text-xs transition shadow-sm">
                     ✏️ संपूर्ण संपादन (Admin Edit)
                 </a>
                 {% elif session.get('role') in ['Investigator', 'Reviewer'] %}
-                <!-- Field Officers / Other Users: Append-Only Access -->
                 <a href="{{ url_for('profiles.append_details', profile_id=profile.profile_id) }}"
                     class="inline-flex items-center gap-1 bg-blue-700 hover:bg-blue-800 text-white font-bold px-3 py-1.5 rounded text-xs transition shadow-sm">
                     ➕ गुन्हा / साथीदार / फोटो जोडा
@@ -81,12 +88,11 @@
         <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-2">
             <h3 class="font-bold text-blue-900 text-sm border-b pb-1">संपर्क व शासकीय ओळखपत्रे</h3>
 
-            <!-- Aadhaar Card Row -->
+            <!-- Aadhaar Row -->
             <div class="flex items-center justify-between">
                 <p>
                     <strong>आधार कार्ड:</strong>
-                    <span id="aadhaar-display" class="font-mono font-semibold">{{ profile.identity_docs.masked_aadhaar
-                        or '-' }}</span>
+                    <span id="aadhaar-display" class="font-mono font-semibold">{{ profile.identity_docs.masked_aadhaar or '-' }}</span>
                 </p>
                 {% if profile.identity_docs and profile.identity_docs.aadhaar_card_no %}
                 <button type="button" onclick="triggerUnmask('aadhaar_card_no', 'aadhaar-display')"
@@ -96,12 +102,11 @@
                 {% endif %}
             </div>
 
-            <!-- PAN Card Row -->
+            <!-- PAN Row -->
             <div class="flex items-center justify-between">
                 <p>
                     <strong>पॅन कार्ड:</strong>
-                    <span id="pan-display" class="font-mono font-semibold">{{ profile.identity_docs.masked_pan or '-'
-                        }}</span>
+                    <span id="pan-display" class="font-mono font-semibold">{{ profile.identity_docs.masked_pan or '-' }}</span>
                 </p>
                 {% if profile.identity_docs and profile.identity_docs.pan_card_no %}
                 <button type="button" onclick="triggerUnmask('pan_card_no', 'pan-display')"
@@ -112,9 +117,7 @@
             </div>
 
             <p><strong>संपर्क क्रमांक:</strong> {{ profile.contacts|join(', ') if profile.contacts else '-' }}</p>
-            <p><strong>तडीपार आदेश:</strong> <span class="font-semibold text-amber-700">{{ profile.tadipar.status if
-                    profile.tadipar else 'No' }}</span> ({{ profile.tadipar.order_details if profile.tadipar else '-'
-                }})</p>
+            <p><strong>तडीपार आदेश:</strong> <span class="font-semibold text-amber-700">{{ profile.tadipar.status if profile.tadipar else 'No' }}</span> ({{ profile.tadipar.order_details if profile.tadipar else '-' }})</p>
         </div>
 
     </div>
@@ -127,8 +130,7 @@
             {% for c in profile.cases %}
             <div class="bg-white p-3 rounded border border-slate-200 flex flex-wrap justify-between items-center gap-2">
                 <div>
-                    <span class="font-mono font-bold text-red-700 text-xs mr-2">FIR NO:  {{ c.fir_number or 'FIR नोंद नाही'
-                        }}</span>
+                    <span class="font-mono font-bold text-red-700 text-xs mr-2">FIR NO: {{ c.fir_number or 'FIR नोंद नाही' }}</span>
                     <span class="font-semibold text-slate-800">कलमे: {{ c.sections or '-' }}</span>
                 </div>
                 <div class="text-slate-600 text-[11px]">
@@ -174,17 +176,24 @@
     </div>
     {% endif %}
 
-    <!-- Extra Photos Gallery (With Modal Zoom) -->
+    <!-- Extra Photos Gallery (Base64 + Legacy Support with Zoom) -->
     {% if profile.extra_photos %}
     <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 text-xs">
-        <h3 class="font-bold text-blue-900 text-sm border-b pb-2 mb-3">अतिरिक्त छायाचित्रे (मोठे करून पाहण्यासाठी फोटोवर
-            क्लिक करा)</h3>
+        <h3 class="font-bold text-blue-900 text-sm border-b pb-2 mb-3">अतिरिक्त छायाचित्रे (मोठे करून पाहण्यासाठी फोटोवर क्लिक करा)</h3>
         <div class="flex flex-wrap gap-3">
             {% for pic in profile.extra_photos %}
-            <img src="{{ url_for('static', filename='uploads/' + pic) }}" alt="Extra Photo"
-                onclick="openImageZoom(this.src)"
-                class="w-24 h-24 object-cover rounded border border-slate-300 shadow-sm cursor-pointer hover:opacity-90 hover:scale-105 transition transform"
-                title="मोठे करून पाहण्यासाठी क्लिक करा">
+                {% if pic.startswith('data:') %}
+                <img src="{{ pic }}" alt="Extra Photo"
+                    onclick="openImageZoom(this.src)"
+                    class="w-24 h-24 object-cover rounded border border-slate-300 shadow-sm cursor-pointer hover:opacity-90 hover:scale-105 transition transform"
+                    title="मोठे करून पाहण्यासाठी क्लिक करा">
+                {% else %}
+                <img src="{{ url_for('static', filename='uploads/' + pic) }}" alt="Extra Photo"
+                    onclick="openImageZoom(this.src)"
+                    onerror="this.onerror=null; this.src='https://placehold.co/150x180?text=No+Photo';"
+                    class="w-24 h-24 object-cover rounded border border-slate-300 shadow-sm cursor-pointer hover:opacity-90 hover:scale-105 transition transform"
+                    title="मोठे करून पाहण्यासाठी क्लिक करा">
+                {% endif %}
             {% endfor %}
         </div>
     </div>
@@ -192,10 +201,8 @@
 
     <!-- Footer Actions -->
     <div class="flex flex-wrap justify-between items-center text-[11px] text-slate-400 border-t pt-3">
-        <span>नोंदणी: {{ profile.created_at.strftime('%Y-%m-%d %H:%M') if profile.created_at else '-' }} (अधिकारी: {{
-            profile.created_by }})</span>
-        <a href="{{ url_for('profiles.list_all') }}" class="text-xs text-blue-700 hover:underline font-bold">&larr; सर्व
-            नोंदींची यादी</a>
+        <span>नोंदणी: {{ profile.created_at.strftime('%Y-%m-%d %H:%M') if profile.created_at else '-' }} (अधिकारी: {{ profile.created_by }})</span>
+        <a href="{{ url_for('profiles.list_all') }}" class="text-xs text-blue-700 hover:underline font-bold">&larr; सर्व नोंदींची यादी</a>
     </div>
 
 </div>
@@ -235,7 +242,6 @@
 </div>
 
 <script>
-    // Image Zoom Handlers
     function openImageZoom(src) {
         document.getElementById('zoomedImage').src = src;
         document.getElementById('imageZoomModal').classList.remove('hidden');
@@ -246,7 +252,6 @@
         document.getElementById('zoomedImage').src = '';
     }
 
-    // Unmask Handlers
     let currentTargetDocType = '';
     let currentTargetElementId = '';
     const currentProfileId = "{{ profile.profile_id }}";

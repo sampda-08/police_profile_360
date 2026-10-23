@@ -4,7 +4,10 @@ from app.utils.decorators import login_required
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
-@dashboard_bp.route('/dashboard')
+# Since url_prefix='/dashboard' is set in __init__.py,
+# route('/') maps directly to /dashboard and /dashboard/
+@dashboard_bp.route('/', methods=['GET'])
+@dashboard_bp.route('/home', methods=['GET'])
 @login_required
 def index():
     profile_count = 0

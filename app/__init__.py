@@ -10,6 +10,9 @@ def create_app():
     app = Flask(__name__)
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'shorya-360-secret-key-2026')
 
+    # Allow routes to resolve with or without a trailing slash
+    app.url_map.strict_slashes = False
+
     # Read Atlas URI from environment or fallback
     mongo_uri = os.environ.get('MONGO_URI', 'mongodb://localhost:27017/police_profile_360')
     
@@ -28,7 +31,7 @@ def create_app():
         client.server_info()
         print("Connected to MongoDB -> Database: police_profile_360 | Count:", db.profiles.count_documents({}))
 
-        # Establish Partial Unique Indexes using supported comparison operators ($gte, $lte)
+        # Establish Partial Unique Indexes using comparison operators ($gte, $lte)
         try:
             db.profiles.create_index(
                 [("identity_docs.aadhaar_card_no", 1)],
@@ -89,12 +92,17 @@ def create_app():
     app.register_blueprint(search_bp, url_prefix='/search')
     app.register_blueprint(admin_bp, url_prefix='/settings')
 
-    # Root Route
+    # Root Route: redirect authenticated officers to dashboard, guests to login
     @app.route('/')
     def root():
         if 'user' in session:
             return redirect(url_for('dashboard.index'))
         return redirect(url_for('auth.login'))
+
+    # Serve browser favicon directly to prevent 404 log noise
+    @app.route('/favicon.ico')
+    def favicon():
+        return app.send_static_file('img/icon-192.png')
 
     # Lightweight Keep-Alive Endpoint for cron-job.org
     @app.route('/health')

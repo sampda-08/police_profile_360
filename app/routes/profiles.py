@@ -28,6 +28,7 @@ def create():
         aadhaar = clean_text(request.form.get('aadhaar_card_no', ''))
         pan = clean_text(request.form.get('pan_card_no', '')).upper()
 
+        # 1. Mandatory Date of Birth check
         if not dob:
             flash("जन्मतारीख प्रविष्ट करणे अनिवार्य आहे (Date of Birth is mandatory).", "danger")
             return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form)
@@ -36,40 +37,37 @@ def create():
             flash("जन्मतारीख आजच्या तारखेपेक्षा पुढे असू शकत नाही.", "danger")
             return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form)
 
-        if not aadhaar:
-            flash("आधार कार्ड क्रमांक प्रविष्ट करणे अनिवार्य आहे (Aadhaar Card is mandatory).", "danger")
-            return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form)
+        # 2. Optional Aadhaar: validate & check uniqueness only if provided
+        if aadhaar:
+            if not re.fullmatch(r'^\d{12}$', aadhaar):
+                flash("आधार क्रमांक फक्त १२ अंकी संख्या असणे आवश्यक आहे (Aadhaar must be exactly 12 numeric digits).", "danger")
+                return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form)
 
-        if not re.fullmatch(r'^\d{12}$', aadhaar):
-            flash("आधार क्रमांक फक्त १२ अंकी संख्या असणे आवश्यक आहे (Aadhaar must be exactly 12 numeric digits).", "danger")
-            return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form)
+            existing_aadhaar = db.profiles.find_one({"identity_docs.aadhaar_card_no": aadhaar})
+            if existing_aadhaar:
+                flash(
+                    f"सावधान! हा आधार क्रमांक आधीपासून नोंदणीकृत आहे "
+                    f"({existing_aadhaar.get('full_name')} - ID: {existing_aadhaar.get('profile_id')}).",
+                    "danger"
+                )
+                return redirect(url_for('profiles.view', profile_id=existing_aadhaar['profile_id']))
 
-        if not pan:
-            flash("पॅन कार्ड क्रमांक प्रविष्ट करणे अनिवार्य आहे (PAN Card is mandatory).", "danger")
-            return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form)
+        # 3. Optional PAN: validate & check uniqueness only if provided
+        if pan:
+            if not re.fullmatch(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$', pan):
+                flash("अवैध पॅन क्रमांक स्वरूप! योग्य नमुना: ABCDE1234F (Invalid PAN Card format).", "danger")
+                return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form)
 
-        if not re.fullmatch(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$', pan):
-            flash("अवैध पॅन क्रमांक स्वरूप! योग्य नमुना: ABCDE1234F (Invalid PAN Card format).", "danger")
-            return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form)
+            existing_pan = db.profiles.find_one({"identity_docs.pan_card_no": pan})
+            if existing_pan:
+                flash(
+                    f"सावधान! पॅन क्रमांक '{pan}' चे रेकॉर्ड आधीपासून सिस्टिममध्ये आहे "
+                    f"(ID: {existing_pan.get('profile_id')}).",
+                    "danger"
+                )
+                return redirect(url_for('profiles.view', profile_id=existing_pan['profile_id']))
 
-        existing_aadhaar = db.profiles.find_one({"identity_docs.aadhaar_card_no": aadhaar})
-        if existing_aadhaar:
-            flash(
-                f"सावधान! आधार क्रमांक '{aadhaar}' चे संशयित आधीपासून नोंदणीकृत आहे "
-                f"({existing_aadhaar.get('full_name')} - ID: {existing_aadhaar.get('profile_id')}).",
-                "danger"
-            )
-            return redirect(url_for('profiles.view', profile_id=existing_aadhaar['profile_id']))
-
-        existing_pan = db.profiles.find_one({"identity_docs.pan_card_no": pan})
-        if existing_pan:
-            flash(
-                f"सावधान! पॅन क्रमांक '{pan}' चे रेकॉर्ड आधीपासून सिस्टिममध्ये आहे "
-                f"(ID: {existing_pan.get('profile_id')}).",
-                "danger"
-            )
-            return redirect(url_for('profiles.view', profile_id=existing_pan['profile_id']))
-
+        # 4. Demographic duplicate check (Name + DOB)
         if full_name:
             existing_person = db.profiles.find_one({
                 "full_name": {"$regex": f"^{re.escape(full_name)}$", "$options": "i"},
@@ -83,6 +81,7 @@ def create():
                 )
                 return redirect(url_for('profiles.view', profile_id=existing_person['profile_id']))
 
+        # 5. Build and insert profile document
         profile_id = SuspectProfile.generate_profile_id(db)
         profile_doc = SuspectProfile.build_profile_document(
             form_data=request.form,
@@ -247,7 +246,6 @@ def edit(profile_id):
         if record.get('tadipar', {}).get('status') != new_tadipar:
             changed_fields.append(f"Tadipar: '{record.get('tadipar', {}).get('status')}' -> '{new_tadipar}'")
 
-        # In-Memory Main Photo Compression
         main_photo_data = record.get('main_photo', '')
         if 'main_photo' in request.files and request.files['main_photo'].filename != '':
             new_encoded = process_and_encode_image(request.files['main_photo'])
@@ -367,7 +365,6 @@ def append_details(profile_id):
             push_updates["sathidar"] = {"$each": appended_sathidars}
             audit_summary.append(f"Added {len(appended_sathidars)} sathidar(s)")
 
-        # In-Memory Extra Photos Compression
         appended_photos_b64 = []
         if 'new_extra_photos' in request.files:
             uploaded_files = request.files.getlist('new_extra_photos')

@@ -1,8 +1,6 @@
 import uuid
-import os
 import unicodedata
 from datetime import datetime, date
-from werkzeug.utils import secure_filename
 from app.utils.image_handler import process_and_encode_image
 
 def clean_text(text: str) -> str:
@@ -35,12 +33,12 @@ class SuspectProfile:
 
     @staticmethod
     def build_profile_document(form_data, files, profile_id, current_officer):
-        # 1. Main Photo (Compressed Base64 in Memory)
+        # 1. Main Photo (In-Memory Base64)
         main_photo_b64 = ""
         if 'main_photo' in files and files['main_photo'].filename != '':
             main_photo_b64 = process_and_encode_image(files['main_photo']) or ""
 
-        # 2. Extra Photos (Compressed Base64 in Memory)
+        # 2. Extra Photos (In-Memory Base64 Array)
         extra_photos_b64 = []
         if 'extra_photos' in files:
             uploaded_files = files.getlist('extra_photos')
@@ -91,6 +89,10 @@ class SuspectProfile:
             if k.strip():
                 custom_fields[clean_text(k)] = clean_text(v)
 
+        # 8. Extract Identity Docs (Map empty values to None so unique sparse index ignores them)
+        raw_aadhaar = clean_text(form_data.get('aadhaar_card_no') or form_data.get('aadhaar_no', ''))
+        raw_pan = clean_text(form_data.get('pan_card_no') or form_data.get('pan_no', '')).upper()
+
         return {
             "profile_id": profile_id,
             "main_photo": main_photo_b64,
@@ -111,8 +113,8 @@ class SuspectProfile:
             },
             "contacts": contact_numbers,
             "identity_docs": {
-                "aadhaar_card_no": clean_text(form_data.get('aadhaar_card_no') or form_data.get('aadhaar_no', '')),
-                "pan_card_no": clean_text(form_data.get('pan_card_no') or form_data.get('pan_no', '')).upper()
+                "aadhaar_card_no": raw_aadhaar if raw_aadhaar else None,
+                "pan_card_no": raw_pan if raw_pan else None
             },
             "sathidar": sathidar_list,
             "cases": cases_list,

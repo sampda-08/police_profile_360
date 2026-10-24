@@ -21,7 +21,7 @@
         {% endif %}
     </div>
 
-    <!-- 1. NON-ADMINISTRATOR VIEW: ACCESS RESTRICTED -->
+    <!-- 1. NON-ADMINISTRATOR VIEW -->
     {% if not is_admin_user %}
     <div class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-md border border-slate-200 text-center space-y-4">
         <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
@@ -84,24 +84,20 @@
                 </div>
             </div>
 
-            <!-- Create Account Form (With Officer Name Added) -->
+            <!-- Create Account Form -->
             <form method="POST" action="{{ url_for('settings.add_user') }}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 bg-slate-50 p-4 rounded border mb-6">
-                <!-- 1. Name -->
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">अधिकाऱ्याचे पूर्ण नाव *</label>
                     <input type="text" name="name" required placeholder="उदा. Ramesh Pawar" class="w-full border rounded px-2 py-1.5 text-xs bg-white focus:ring-1 focus:ring-blue-600 outline-none">
                 </div>
-                <!-- 2. Username -->
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">अधिकारी युझर आयडी *</label>
                     <input type="text" name="username" required placeholder="उदा. MH_INV_102" class="w-full border rounded px-2 py-1.5 text-xs bg-white focus:ring-1 focus:ring-blue-600 outline-none">
                 </div>
-                <!-- 3. Password -->
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">प्रवेश पासवर्ड *</label>
                     <input type="password" name="password" required placeholder="पासवर्ड" class="w-full border rounded px-2 py-1.5 text-xs bg-white focus:ring-1 focus:ring-blue-600 outline-none">
                 </div>
-                <!-- 4. Role -->
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">पद / भूमिका (Role) *</label>
                     <select name="role" class="w-full border rounded px-2 py-1.5 text-xs bg-white focus:ring-1 focus:ring-blue-600 outline-none">
@@ -111,12 +107,10 @@
                         <option value="Administrator">4. Administrator (प्रशासक)</option>
                     </select>
                 </div>
-                <!-- 5. Police Station -->
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">पोलीस ठाणे *</label>
                     <input type="text" name="station" required placeholder="उदा. City Kotwali" class="w-full border rounded px-2 py-1.5 text-xs bg-white focus:ring-1 focus:ring-blue-600 outline-none">
                 </div>
-                <!-- Submit -->
                 <div class="flex items-end">
                     <button type="submit" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-1.5 px-3 rounded text-xs transition shadow-sm">
                         + खाते तयार करा
@@ -124,7 +118,7 @@
                 </div>
             </form>
 
-            <!-- REGISTERED USERS MANAGEMENT TABLE -->
+            <!-- REGISTERED USERS TABLE -->
             <div class="border border-slate-200 rounded-lg overflow-x-auto">
                 <div class="p-3 bg-slate-100 border-b flex justify-between items-center">
                     <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">
@@ -146,9 +140,7 @@
                         {% if users %}
                             {% for u in users %}
                             <tr class="hover:bg-slate-50 transition-colors">
-                                <td class="p-3 font-bold text-slate-900">
-                                    {{ u.name or u.full_name or '-' }}
-                                </td>
+                                <td class="p-3 font-bold text-slate-900">{{ u.name or u.full_name or '-' }}</td>
                                 <td class="p-3 font-mono font-semibold text-blue-800">{{ u.username }}</td>
                                 <td class="p-3 font-mono text-slate-500">
                                     <span class="text-slate-400">••••••••</span>
@@ -225,7 +217,6 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                <!-- By Profile ID -->
                 <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 flex flex-col justify-between">
                     <div>
                         <h3 class="font-bold text-slate-800 mb-1">पर्याय १: Profile ID द्वारे हटवा</h3>
@@ -239,7 +230,6 @@
                     </button>
                 </div>
 
-                <!-- By Name -->
                 <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 flex flex-col justify-between">
                     <div>
                         <h3 class="font-bold text-slate-800 mb-1">पर्याय २: नावाद्वारे हटवा</h3>
@@ -253,7 +243,6 @@
                     </button>
                 </div>
 
-                <!-- Delete All -->
                 <div class="bg-red-50 p-4 rounded-lg border border-red-200 flex flex-col justify-between">
                     <div>
                         <h3 class="font-bold text-red-950 mb-1">पर्याय ३: सर्व रेकॉर्ड्स हटवा (Purge All)</h3>
@@ -270,15 +259,16 @@
         </section>
 
 
-        <!-- ४. ॲडमिनसाठी नवीन फील्ड निर्मिती अधिकार -->
-        <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
-            <div class="border-b pb-3 mb-4">
+        <!-- ४. ॲडमिनसाठी नवीन फील्ड निर्मिती अधिकार व व्यवस्थापन -->
+        <section class="bg-white p-6 rounded-lg shadow-sm border border-slate-200 space-y-4">
+            <div class="border-b pb-3">
                 <h2 class="text-base font-bold text-slate-900">४. ॲडमिनसाठी नवीन फील्ड निर्मिती अधिकार (Admin Exclusive Setting)</h2>
                 <p class="text-xs text-slate-500">
-                    येथे जोडलेले फील्ड संपूर्ण सिस्टिममधील सर्व अधिकाऱ्यांसाठी कायमस्वरूपी टेम्पलेट म्हणून दिसेल.
+                    येथे जोडलेले फील्ड नवीन प्रोफाइल नोंदणी करताना कायमस्वरूपी टेम्पलेट म्हणून दिसेल.
                 </p>
             </div>
 
+            <!-- Add Field Form -->
             <form method="POST" action="{{ url_for('settings.add_permanent_field') }}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 p-4 rounded border">
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">इंग्रजी फील्ड की (Code Name) *</label>
@@ -302,6 +292,54 @@
                     </button>
                 </div>
             </form>
+
+            <!-- ACTIVE TEMPLATE FIELDS LIST WITH DELETE BUTTON -->
+            <div class="border border-slate-200 rounded-lg overflow-hidden">
+                <div class="p-3 bg-slate-100 border-b flex justify-between items-center">
+                    <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        नोंदणी फॉर्ममध्ये जोडलेले कायमस्वरूपी फील्ड्स (Active Fields: {{ template_fields|length }})
+                    </h3>
+                </div>
+
+                <table class="w-full text-xs text-left">
+                    <thead class="bg-slate-50 text-slate-600 uppercase border-b text-[11px]">
+                        <tr>
+                            <th class="p-3">मराठी लेबल (Display Name)</th>
+                            <th class="p-3">इंग्रजी की (Code Key)</th>
+                            <th class="p-3">प्रकार (Type)</th>
+                            <th class="p-3 text-right">कृती (Action)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        {% if template_fields %}
+                            {% for f in template_fields %}
+                            <tr class="hover:bg-slate-50">
+                                <td class="p-3 font-bold text-slate-800">{{ f.field_label_marathi }}</td>
+                                <td class="p-3 font-mono text-blue-700">{{ f.field_name }}</td>
+                                <td class="p-3">
+                                    <span class="bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded text-[10px] uppercase">
+                                        {{ f.field_type }}
+                                    </span>
+                                </td>
+                                <td class="p-3 text-right">
+                                    <form method="POST" action="{{ url_for('settings.delete_permanent_field', field_name=f.field_name) }}" 
+                                          onsubmit="return confirm('खात्री आहे? हे फील्ड नोंदणी फॉर्ममधून हटवले जाईल: {{ f.field_label_marathi }}');" 
+                                          class="inline-block">
+                                        <button type="submit" class="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold px-2.5 py-1 rounded text-xs transition">
+                                            🗑️ हटवा (Delete)
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="p-4 text-center text-slate-400">अद्याप कोणतेही कायमस्वरूपी फील्ड जोडलेले नाही.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
         </section>
 
     </div>
@@ -369,7 +407,6 @@
 </div>
 
 <script>
-// Reset Password Modal
 function openResetPasswordModal(username) {
     document.getElementById('resetTargetUser').innerText = username;
     document.getElementById('resetPasswordForm').action = `/settings/users/reset-password/${encodeURIComponent(username)}`;
@@ -380,7 +417,6 @@ function closeResetPasswordModal() {
     document.getElementById('resetPasswordModal').classList.add('hidden');
 }
 
-// Delete Suspects Modal
 function confirmDelete(mode) {
     const modal = document.getElementById('deleteModal');
     const modeInput = document.getElementById('modal_delete_mode');

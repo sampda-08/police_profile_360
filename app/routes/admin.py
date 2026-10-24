@@ -12,11 +12,6 @@ admin_bp = Blueprint('settings', __name__)
 @admin_bp.route('/', methods=['GET'])
 @login_required
 def index():
-    """
-    Settings Dashboard:
-    - Non-admin users are shown an Access Restricted screen.
-    - Admin users can unlock settings and manage accounts, audit trails, and templates.
-    """
     current_role = session.get('role', 'Read-Only')
     is_admin_user = (current_role == 'Administrator')
     is_admin_unlocked = session.get('admin_verified', False)
@@ -25,7 +20,6 @@ def index():
     template_fields_list = []
 
     if is_admin_user and is_admin_unlocked and db is not None:
-        # Load user accounts with assigned roles and stations
         users_list = list(db.users.find().sort("username", 1))
         template_fields_list = list(db.template_fields.find().sort("created_at", -1))
 
@@ -41,9 +35,6 @@ def index():
 @admin_bp.route('/unlock-admin', methods=['POST'])
 @login_required
 def unlock_admin():
-    """
-    Verifies admin passcode. Blocked if current logged-in role is not Administrator.
-    """
     current_username = session.get('user', '')
     current_role = session.get('role', 'Read-Only')
 
@@ -53,7 +44,6 @@ def unlock_admin():
 
     entered_password = request.form.get('admin_password', '').strip()
 
-    # Developer fallback
     if entered_password == "admin123":
         session['admin_verified'] = True
         session['role'] = 'Administrator'
@@ -139,10 +129,6 @@ def add_user():
 @admin_bp.route('/users/remove/<username>', methods=['POST'])
 @login_required
 def remove_user_access(username):
-    """
-    Deactivates or deletes an officer's login access.
-    Prevents self-deletion of the active administrator session.
-    """
     if not session.get('admin_verified'):
         flash("Admin verification required.", "warning")
         return redirect(url_for('settings.index'))
@@ -172,7 +158,6 @@ def remove_user_access(username):
 @admin_bp.route('/users/reset-password/<username>', methods=['POST'])
 @login_required
 def reset_user_password(username):
-    """Allows an administrator to reset an officer's login password."""
     if not session.get('admin_verified'):
         flash("Admin verification required.", "warning")
         return redirect(url_for('settings.index'))
@@ -210,7 +195,7 @@ def add_permanent_field():
     field_type = request.form.get('field_type', 'text').strip()
 
     if not field_name:
-        flash("Field key name is required.", "danger")
+        flash("इंग्रजी कोड नाव (Field key) अनिवार्य आहे.", "danger")
         return redirect(url_for('settings.index'))
 
     clean_field_name = field_name.lower().replace(" ", "_")
@@ -234,7 +219,31 @@ def add_permanent_field():
             action="PERMANENT_FIELD_CREATED",
             details=f"Field Key: {clean_field_name} | Label: {field_label_marathi}"
         )
-        flash(f"Permanent template field '{field_label_marathi}' added successfully.", "success")
+        flash(f"कायमस्वरूपी फील्ड '{field_label_marathi}' यशस्वीरित्या जोडले गेले.", "success")
+
+    return redirect(url_for('settings.index'))
+
+
+@admin_bp.route('/fields/delete/<field_name>', methods=['POST'])
+@login_required
+def delete_permanent_field(field_name):
+    """Deletes a permanent template field so it no longer appears in profile forms."""
+    if not session.get('admin_verified'):
+        flash("Admin verification required.", "warning")
+        return redirect(url_for('settings.index'))
+
+    if db is not None:
+        res = db.template_fields.delete_one({"field_name": field_name})
+        if res.deleted_count > 0:
+            AuditLog.create_entry(
+                db,
+                officer_id=session.get('user', 'Admin'),
+                action="PERMANENT_FIELD_DELETED",
+                details=f"Deleted field: {field_name}"
+            )
+            flash(f"फील्ड '{field_name}' कायमस्वरूपी हटवण्यात आले.", "success")
+        else:
+            flash(f"फील्ड '{field_name}' सापडले नाही.", "warning")
 
     return redirect(url_for('settings.index'))
 

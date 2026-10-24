@@ -10,12 +10,12 @@
 
     <form method="POST" action="{{ url_for('profiles.create') }}" enctype="multipart/form-data" class="space-y-6">
 
-        <!-- १. प्राथमिक वैयक्तिक तपशील -->
+        <!-- १. प्राथमिक वैयक्तिक माहिती -->
         <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-4">
             <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wider">१. प्राथमिक वैयक्तिक माहिती (Personal Details)</h2>
             
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                <div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 text-xs">
+                <div class="md:col-span-2">
                     <label class="block font-bold text-slate-600 mb-1">पूर्ण नाव (Full Name) <span class="text-red-500">*</span></label>
                     <input type="text" name="full_name" required placeholder=""
                            value="{{ form_data.get('full_name', '') if form_data else '' }}"
@@ -32,20 +32,28 @@
                 <!-- Mandatory DOB -->
                 <div>
                     <label class="block font-bold text-slate-600 mb-1">जन्मतारीख (DOB) <span class="text-red-500">*</span></label>
-                    <input type="date" name="dob" required max="{{ today_date }}"
+                    <input type="date" id="dob_input" name="dob" required max="{{ today_date }}" onchange="calculateAge()"
                            value="{{ form_data.get('dob', '') if form_data else '' }}"
                            class="w-full border border-slate-300 rounded px-3 py-2 bg-white focus:ring-2 focus:ring-blue-600 outline-none">
                 </div>
 
+                <!-- Age Field -->
+                <div>
+                    <label class="block font-bold text-slate-600 mb-1">वय (Age)</label>
+                    <input type="number" id="age_input" name="age" min="1" max="120" placeholder="उदा. 28"
+                           value="{{ form_data.get('age', '') if form_data else '' }}"
+                           class="w-full border border-slate-300 rounded px-3 py-2 bg-white focus:ring-2 focus:ring-blue-600 outline-none">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                 <div>
                     <label class="block font-bold text-slate-600 mb-1">पोलीस ठाणे <span class="text-red-500">*</span></label>
                     <input type="text" name="station" required placeholder=""
                            value="{{ form_data.get('station', '') if form_data else '' }}"
                            class="w-full border border-slate-300 rounded px-3 py-2 bg-white focus:ring-2 focus:ring-blue-600 outline-none">
                 </div>
-            </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div>
                     <label class="block font-bold text-slate-600 mb-1">ओळख खूण (Identification Mark)</label>
                     <input type="text" name="identification_mark" placeholder="उदा. कपाळावर टाके पडलेला व्रण"
@@ -98,21 +106,48 @@
             </div>
         </div>
 
-        <!-- ३. पत्ता व संपर्क -->
+        <!-- ३. पत्ता, GPS स्थान व संपर्क -->
         <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-4">
-            <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wider">३. पत्ता आणि संपर्क तपशील (Address & Contacts)</h2>
+            <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wider">३. पत्ता आणि संपर्क तपशील (Address, Location & Contacts)</h2>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                 <div>
                     <label class="block font-bold text-slate-600 mb-1">गाव / शहर</label>
-                    <input type="text" name="village_city" placeholder="" class="w-full border rounded px-3 py-2 bg-white text-xs">
+                    <input type="text" name="village_city" placeholder="" 
+                           value="{{ form_data.get('village_city', '') if form_data else '' }}"
+                           class="w-full border rounded px-3 py-2 bg-white text-xs">
                 </div>
                 <div>
                     <label class="block font-bold text-slate-600 mb-1">तालुका (Sub-District)</label>
-                    <input type="text" name="subdist" placeholder="" class="w-full border rounded px-3 py-2 bg-white text-xs">
+                    <input type="text" name="subdist" placeholder="" 
+                           value="{{ form_data.get('subdist', '') if form_data else '' }}"
+                           class="w-full border rounded px-3 py-2 bg-white text-xs">
                 </div>
                 <div>
                     <label class="block font-bold text-slate-600 mb-1">जिल्हा (District)</label>
-                    <input type="text" name="dist" placeholder="" class="w-full border rounded px-3 py-2 bg-white text-xs">
+                    <input type="text" name="dist" placeholder="" 
+                           value="{{ form_data.get('dist', '') if form_data else '' }}"
+                           class="w-full border rounded px-3 py-2 bg-white text-xs">
+                </div>
+            </div>
+
+            <!-- Latitude & Longitude with GPS Location Trigger -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs bg-white p-3 rounded border border-slate-200">
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">अक्षांश (Latitude)</label>
+                    <input type="text" id="latitude" name="latitude" placeholder="उदा. 20.9320" 
+                           value="{{ form_data.get('latitude', '') if form_data else '' }}"
+                           class="w-full border border-slate-300 rounded px-3 py-2 font-mono text-xs">
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="font-bold text-slate-700">रेखांश (Longitude)</label>
+                        <button type="button" onclick="getCurrentLocation()" class="text-[10px] text-blue-700 hover:underline font-bold">
+                            📍 सध्याचे स्थान घ्या (Get GPS)
+                        </button>
+                    </div>
+                    <input type="text" id="longitude" name="longitude" placeholder="उदा. 77.7523" 
+                           value="{{ form_data.get('longitude', '') if form_data else '' }}"
+                           class="w-full border border-slate-300 rounded px-3 py-2 font-mono text-xs">
                 </div>
             </div>
 
@@ -190,18 +225,37 @@
             </div>
         </div>
 
-        <!-- ८. डायनॅमिक अतिरिक्त फील्ड्स -->
+        <!-- ८. डायनॅमिक व कायमस्वरूपी अतिरिक्त फील्ड्स -->
         <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-4">
             <div class="flex justify-between items-center">
                 <div>
-                    <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wider">८. अतिरिक्त सानुकूल माहिती (Custom Extra Fields)</h2>
-                    <p class="text-[11px] text-slate-500 mt-0.5">आवश्यकतेनुसार कोणतेही नवीन शीर्षक आणि माहिती जोडा (उदा. बँक खाते, वाहनाचा क्रमांक, इत्यादी).</p>
+                    <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wider">८. अतिरिक्त माहिती (Permanent & Custom Extra Fields)</h2>
+                    <p class="text-[11px] text-slate-500 mt-0.5">प्रशासकाने जोडलेले कायमस्वरूपी फील्ड्स व तात्पुरती सानुकूल माहिती.</p>
                 </div>
                 <button type="button" onclick="addCustomFieldRow()" class="text-[11px] bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold px-3 py-1 rounded transition border border-purple-200">
                     + नवीन फील्ड जोडा (Add Field)
                 </button>
             </div>
 
+            <!-- १. ॲडमिनने सेट केलेले कायमस्वरूपी फील्ड्स -->
+            {% if template_fields %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 bg-white p-3.5 rounded-lg border border-slate-200">
+                {% for f in template_fields %}
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">
+                        {{ f.field_label_marathi }} <span class="text-[10px] text-blue-600 font-mono font-normal">({{ f.field_name }})</span>
+                    </label>
+                    <input type="hidden" name="template_field_keys[]" value="{{ f.field_label_marathi }}">
+                    <input type="{{ f.field_type or 'text' }}" 
+                           name="template_field_values[]" 
+                           placeholder="{{ f.field_label_marathi }} भरा" 
+                           class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs bg-white focus:ring-1 focus:ring-blue-600 outline-none">
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- २. तात्पुरते जोडलेले सानुकूल फील्ड्स -->
             <div id="custom-fields-container" class="space-y-2"></div>
         </div>
 
@@ -219,6 +273,38 @@
 </div>
 
 <script>
+function calculateAge() {
+    const dobValue = document.getElementById('dob_input').value;
+    if (dobValue) {
+        const birthDate = new Date(dobValue);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        if (age >= 0) {
+            document.getElementById('age_input').value = age;
+        }
+    }
+}
+
+function getCurrentLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                document.getElementById('latitude').value = pos.coords.latitude.toFixed(6);
+                document.getElementById('longitude').value = pos.coords.longitude.toFixed(6);
+            },
+            (err) => {
+                alert("GPS स्थान मिळवण्यात अडचण आली: " + err.message);
+            }
+        );
+    } else {
+        alert("आपल्या ब्राउझरमध्ये GPS सपोर्ट नाही.");
+    }
+}
+
 function addContactRow() {
     const container = document.getElementById('contacts-container');
     const input = document.createElement('input');

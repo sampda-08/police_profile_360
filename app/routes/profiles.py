@@ -17,6 +17,10 @@ profiles_bp = Blueprint('profiles', __name__)
 @login_required
 @role_required(['Administrator', 'Investigator'])
 def create():
+    template_fields_list = []
+    if db is not None:
+        template_fields_list = list(db.template_fields.find().sort("created_at", 1))
+
     if request.method == 'POST':
         if db is None:
             flash("डेटाबेस जोडलेला नाही (Database offline).", "danger")
@@ -31,17 +35,17 @@ def create():
         # 1. Mandatory Date of Birth check
         if not dob:
             flash("जन्मतारीख प्रविष्ट करणे अनिवार्य आहे (Date of Birth is mandatory).", "danger")
-            return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form)
+            return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form, template_fields=template_fields_list)
 
         if not SuspectProfile.validate_dob(dob):
             flash("जन्मतारीख आजच्या तारखेपेक्षा पुढे असू शकत नाही.", "danger")
-            return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form)
+            return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form, template_fields=template_fields_list)
 
-        # 2. Optional Aadhaar: validate & check uniqueness only if provided
+        # 2. Optional Aadhaar check
         if aadhaar:
             if not re.fullmatch(r'^\d{12}$', aadhaar):
                 flash("आधार क्रमांक फक्त १२ अंकी संख्या असणे आवश्यक आहे (Aadhaar must be exactly 12 numeric digits).", "danger")
-                return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form)
+                return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form, template_fields=template_fields_list)
 
             existing_aadhaar = db.profiles.find_one({"identity_docs.aadhaar_card_no": aadhaar})
             if existing_aadhaar:
@@ -52,11 +56,11 @@ def create():
                 )
                 return redirect(url_for('profiles.view', profile_id=existing_aadhaar['profile_id']))
 
-        # 3. Optional PAN: validate & check uniqueness only if provided
+        # 3. Optional PAN check
         if pan:
             if not re.fullmatch(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$', pan):
                 flash("अवैध पॅन क्रमांक स्वरूप! योग्य नमुना: ABCDE1234F (Invalid PAN Card format).", "danger")
-                return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form)
+                return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form, template_fields=template_fields_list)
 
             existing_pan = db.profiles.find_one({"identity_docs.pan_card_no": pan})
             if existing_pan:
@@ -94,7 +98,7 @@ def create():
             db.profiles.insert_one(profile_doc)
         except DuplicateKeyError:
             flash("डेटाबेस त्रुटी: ही ओळख माहिती आधीच नोंदलेली आहे (Duplicate Unique Index).", "danger")
-            return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form)
+            return render_template('profiles/create.html', today_date=date.today().isoformat(), form_data=request.form, template_fields=template_fields_list)
 
         AuditLog.create_entry(
             db,
@@ -106,7 +110,7 @@ def create():
         flash(f"नवीन नोंद यशस्वी झाली! Profile ID: {profile_id}", "success")
         return redirect(url_for('profiles.view', profile_id=profile_id))
 
-    return render_template('profiles/create.html', today_date=date.today().isoformat())
+    return render_template('profiles/create.html', today_date=date.today().isoformat(), template_fields=template_fields_list)
 
 
 @profiles_bp.route('/view/<profile_id>')
@@ -235,23 +239,47 @@ def edit(profile_id):
         new_station = clean_text(request.form.get('station', ''))
         new_tadipar = request.form.get('tadipar_status', 'No')
 
+        raw_age = request.form.get('age', '').strip()
+        age_val = int(raw_age) if raw_age and raw_age.isdigit() else None
+
+        lat = clean_text(request.form.get('latitude', ''))
+        lon = clean_text(request.form.get('longitude', ''))
+
         if record.get('full_name') != new_name:
             changed_fields.append(f"Name: '{record.get('full_name')}' -> '{new_name}'")
         if record.get('alias') != new_alias:
             changed_fields.append(f"Alias: '{record.get('alias')}' -> '{new_alias}'")
         if record.get('dob') != dob:
             changed_fields.append(f"DOB: '{record.get('dob')}' -> '{dob}'")
+        if record.get('age') != age_val:
+            changed_fields.append(f"Age: '{record.get('age')}' -> '{age_val}'")
         if record.get('station') != new_station:
             changed_fields.append(f"Station: '{record.get('station')}' -> '{new_station}'")
         if record.get('tadipar', {}).get('status') != new_tadipar:
             changed_fields.append(f"Tadipar: '{record.get('tadipar', {}).get('status')}' -> '{new_tadipar}'")
 
+        # 1. Main Photo Update
         main_photo_data = record.get('main_photo', '')
         if 'main_photo' in request.files and request.files['main_photo'].filename != '':
             new_encoded = process_and_encode_image(request.files['main_photo'])
             if new_encoded:
                 main_photo_data = new_encoded
                 changed_fields.append("Main Photo Updated (Compressed Base64)")
+
+        # 2. Extra Photos Update (Preserve existing and append newly uploaded Base64 photos)
+        existing_extra_photos = record.get('extra_photos', []) or []
+        new_extra_encoded = []
+        if 'extra_photos' in request.files:
+            uploaded_extras = request.files.getlist('extra_photos')
+            for f in uploaded_extras:
+                if f.filename != '':
+                    enc = process_and_encode_image(f)
+                    if enc:
+                        new_extra_encoded.append(enc)
+
+        if new_extra_encoded:
+            existing_extra_photos.extend(new_extra_encoded)
+            changed_fields.append(f"Added {len(new_extra_encoded)} Extra Photo(s)")
 
         fir_numbers = request.form.getlist('fir_number[]')
         sections_list = request.form.getlist('sections[]')
@@ -283,12 +311,16 @@ def edit(profile_id):
             "full_name": new_name,
             "alias": new_alias,
             "dob": dob,
+            "age": age_val,
             "main_photo": main_photo_data,
+            "extra_photos": existing_extra_photos,
             "identification_mark": clean_text(request.form.get('identification_mark', '')),
             "station": new_station,
             "address.village_city": clean_text(request.form.get('village_city', '')),
             "address.subdist": clean_text(request.form.get('subdist', '')),
             "address.dist": clean_text(request.form.get('dist', '')),
+            "address.latitude": lat if lat else None,
+            "address.longitude": lon if lon else None,
             "contacts": contact_numbers,
             "sathidar": sathidar_list,
             "cases": cases_list,

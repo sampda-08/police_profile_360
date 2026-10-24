@@ -28,10 +28,13 @@
             {% endif %}
             <div>
                 <h1 class="text-2xl font-black text-slate-900">{{ profile.full_name }}</h1>
-                <p class="text-xs text-slate-500 mt-0.5">टोपणनाव: <span class="font-semibold text-slate-800">{{
-                        profile.alias or 'नोंद नाही' }}</span></p>
-                <p class="text-xs text-slate-500">जन्मतारीख: <span class="font-semibold text-slate-800">{{ profile.dob
-                        or 'नोंद नाही' }}</span></p>
+                <p class="text-xs text-slate-500 mt-0.5">टोपणनाव: <span class="font-semibold text-slate-800">{{ profile.alias or 'नोंद नाही' }}</span></p>
+                <p class="text-xs text-slate-500">
+                    जन्मतारीख: <span class="font-semibold text-slate-800">{{ profile.dob or 'नोंद नाही' }}</span>
+                    {% if profile.age %}
+                    | वय: <span class="font-bold text-blue-900">{{ profile.age }} वर्षे</span>
+                    {% endif %}
+                </p>
             </div>
         </div>
 
@@ -73,6 +76,20 @@
             <p><strong>गाव/शहर:</strong> {{ profile.address.village_city if profile.address else '-' }}</p>
             <p><strong>तालुका:</strong> {{ profile.address.subdist if profile.address else '-' }} |
                 <strong>जिल्हा:</strong> {{ profile.address.dist if profile.address else '-' }}</p>
+
+            <!-- Latitude & Longitude with Maps Link -->
+            {% if profile.address and profile.address.latitude and profile.address.longitude %}
+            <p>
+                <strong>GPS स्थान:</strong>
+                <a href="https://www.google.com/maps?q={{ profile.address.latitude }},{{ profile.address.longitude }}" target="_blank"
+                   class="inline-flex items-center gap-1 font-mono text-blue-700 hover:text-blue-900 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    📍 {{ profile.address.latitude }}, {{ profile.address.longitude }} (नकाशा उघडा)
+                </a>
+            </p>
+            {% else %}
+            <p><strong>GPS स्थान:</strong> <span class="text-slate-400">नोंद नाही</span></p>
+            {% endif %}
+
             <p><strong>ओळख खुणा / व्रण:</strong> {{ profile.identification_mark or '-' }}</p>
             <p>
                 <strong>बायोमेट्रिक नोंद:</strong>

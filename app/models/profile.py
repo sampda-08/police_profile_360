@@ -81,17 +81,34 @@ class SuspectProfile:
         thumbprint_payload = form_data.get('biometric_thumb_data', '').strip()
         thumbprint_source = form_data.get('biometric_source', 'MANUAL').strip()
 
-        # 7. Dynamic Custom Fields
-        extra_keys = form_data.getlist('extra_key[]')
-        extra_vals = form_data.getlist('extra_val[]')
+        # 7. Merge Permanent Template Fields + Dynamic Ad-hoc Custom Fields
         custom_fields = {}
-        for k, v in zip(extra_keys, extra_vals):
-            if k.strip():
+
+        # A. Permanent Admin Template Fields
+        tpl_keys = form_data.getlist('template_field_keys[]')
+        tpl_vals = form_data.getlist('template_field_values[]')
+        for k, v in zip(tpl_keys, tpl_vals):
+            if k.strip() and v.strip():
                 custom_fields[clean_text(k)] = clean_text(v)
 
-        # 8. Extract Identity Docs (Map empty values to None so unique sparse index ignores them)
+        # B. Dynamic Ad-hoc Fields
+        adhoc_keys = form_data.getlist('custom_keys[]')
+        adhoc_vals = form_data.getlist('custom_values[]')
+        for k, v in zip(adhoc_keys, adhoc_vals):
+            if k.strip() and v.strip():
+                custom_fields[clean_text(k)] = clean_text(v)
+
+        # 8. Extract Identity Docs
         raw_aadhaar = clean_text(form_data.get('aadhaar_card_no') or form_data.get('aadhaar_no', ''))
         raw_pan = clean_text(form_data.get('pan_card_no') or form_data.get('pan_no', '')).upper()
+
+        # 9. Extract Age
+        raw_age = form_data.get('age', '').strip()
+        age_val = int(raw_age) if raw_age and raw_age.isdigit() else None
+
+        # 10. Extract Coordinates
+        lat = clean_text(form_data.get('latitude', ''))
+        lon = clean_text(form_data.get('longitude', ''))
 
         return {
             "profile_id": profile_id,
@@ -99,6 +116,7 @@ class SuspectProfile:
             "full_name": clean_text(form_data.get('full_name', '')),
             "alias": clean_text(form_data.get('alias', '')),
             "dob": form_data.get('dob', ''),
+            "age": age_val,
             "identification_mark": clean_text(form_data.get('identification_mark', '')),
             "biometric": {
                 "source": thumbprint_source,
@@ -109,7 +127,9 @@ class SuspectProfile:
             "address": {
                 "village_city": clean_text(form_data.get('village_city', '')),
                 "subdist": clean_text(form_data.get('subdist', '')),
-                "dist": clean_text(form_data.get('dist', ''))
+                "dist": clean_text(form_data.get('dist', '')),
+                "latitude": lat if lat else None,
+                "longitude": lon if lon else None
             },
             "contacts": contact_numbers,
             "identity_docs": {

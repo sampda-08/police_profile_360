@@ -17,15 +17,11 @@
 
     <form method="POST" action="{{ url_for('profiles.edit', profile_id=profile.profile_id) }}" enctype="multipart/form-data" class="space-y-6">
 
-        <!-- १. ओळख माहिती -->
-        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
-            <h2 class="text-xs font-bold text-blue-900 uppercase tracking-wider mb-4">१. मुख्य ओळख</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">फोटो बदला (ऐच्छिक)</label>
-                    <input type="file" name="main_photo" accept="image/*" class="w-full text-xs text-slate-500">
-                </div>
-                <div>
+        <!-- १. ओळख माहिती व फोटो -->
+        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-4">
+            <h2 class="text-xs font-bold text-blue-900 uppercase tracking-wider">१. मुख्य ओळख व छायाचित्रे</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                <div class="md:col-span-2">
                     <label class="block text-xs font-semibold text-slate-700 mb-1">पूर्ण नाव *</label>
                     <input type="text" name="full_name" value="{{ profile.full_name }}" required class="w-full border rounded px-3 py-2 text-xs bg-white">
                 </div>
@@ -34,20 +30,52 @@
                     <input type="text" name="alias" value="{{ profile.alias }}" class="w-full border rounded px-3 py-2 text-xs bg-white">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">जन्मतारीख (Max: आजपर्यंत)</label>
-                    <input type="date" name="dob" max="{{ today_date }}" value="{{ profile.dob }}" class="w-full border rounded px-3 py-2 text-xs bg-white">
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">जन्मतारीख</label>
+                    <input type="date" id="dob_input" name="dob" max="{{ today_date }}" value="{{ profile.dob }}" onchange="calculateAge()" class="w-full border rounded px-3 py-2 text-xs bg-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">वय (Age)</label>
+                    <input type="number" id="age_input" name="age" min="1" max="120" value="{{ profile.age or '' }}" class="w-full border rounded px-3 py-2 text-xs bg-white">
                 </div>
             </div>
 
-            <div class="mt-4">
-                <label class="block text-xs font-semibold text-slate-700 mb-1">ओळख खुणा / व्रण</label>
-                <input type="text" name="identification_mark" value="{{ profile.identification_mark }}" class="w-full border rounded px-3 py-2 text-xs bg-white">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">मुख्य फोटो बदला (ऐच्छिक)</label>
+                    <input type="file" name="main_photo" accept="image/*" class="w-full text-xs text-slate-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">ओळख खुणा / व्रण</label>
+                    <input type="text" name="identification_mark" value="{{ profile.identification_mark }}" class="w-full border rounded px-3 py-2 text-xs bg-white">
+                </div>
+            </div>
+
+            <!-- अतिरिक्त छायाचित्रे (Extra Photos Upload) -->
+            <div class="border-t border-slate-200 pt-3">
+                <label class="block text-xs font-semibold text-slate-700 mb-1">नवीन अतिरिक्त फोटो जोडा (Add Extra Photos)</label>
+                <p class="text-[11px] text-slate-500 mb-2">गुन्ह्यातील किंवा इतर कोनातून काढलेले फोटो निवडा (एकापेक्षा जास्त निवडू शकता).</p>
+                <input type="file" name="extra_photos" multiple accept="image/*" class="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:bg-blue-50 file:text-blue-700">
+
+                {% if profile.extra_photos %}
+                <div class="mt-3">
+                    <p class="text-[11px] font-bold text-slate-600 mb-1.5">सध्या जोडलेले अतिरिक्त फोटो:</p>
+                    <div class="flex flex-wrap gap-2">
+                        {% for pic in profile.extra_photos %}
+                            {% if pic.startswith('data:') %}
+                            <img src="{{ pic }}" alt="Extra Photo" class="w-14 h-14 object-cover rounded border border-slate-300">
+                            {% else %}
+                            <img src="{{ url_for('static', filename='uploads/' + pic) }}" alt="Extra Photo" onerror="this.style.display='none'" class="w-14 h-14 object-cover rounded border border-slate-300">
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
 
-        <!-- २. ठाणे व पत्ता -->
-        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
-            <h2 class="text-xs font-bold text-blue-900 uppercase tracking-wider mb-4">२. पोलीस ठाणे व पत्ता</h2>
+        <!-- २. ठाणे व पत्ता आणि जिओ-लोकेशन -->
+        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-4">
+            <h2 class="text-xs font-bold text-blue-900 uppercase tracking-wider">२. पोलीस ठाणे, पत्ता व GPS स्थान</h2>
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                     <label class="block text-xs font-semibold text-slate-700 mb-1">पोलीस ठाणे *</label>
@@ -64,6 +92,23 @@
                 <div>
                     <label class="block text-xs font-semibold text-slate-700 mb-1">जिल्हा *</label>
                     <input type="text" name="dist" value="{{ profile.address.dist if profile.address else '' }}" required class="w-full border rounded px-3 py-2 text-xs bg-white">
+                </div>
+            </div>
+
+            <!-- Latitude & Longitude -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-3 rounded border border-slate-200">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">अक्षांश (Latitude)</label>
+                    <input type="text" id="latitude" name="latitude" value="{{ profile.address.latitude if profile.address and profile.address.latitude else '' }}" placeholder="उदा. 20.9320" class="w-full border rounded px-3 py-2 text-xs font-mono">
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-xs font-semibold text-slate-700">रेखांश (Longitude)</label>
+                        <button type="button" onclick="getCurrentLocation()" class="text-[10px] text-blue-700 hover:underline font-bold">
+                            📍 सध्याचे स्थान घ्या (Get GPS)
+                        </button>
+                    </div>
+                    <input type="text" id="longitude" name="longitude" value="{{ profile.address.longitude if profile.address and profile.address.longitude else '' }}" placeholder="उदा. 77.7523" class="w-full border rounded px-3 py-2 text-xs font-mono">
                 </div>
             </div>
         </div>
@@ -107,7 +152,7 @@
         <!-- ४. तडीपार स्थिती -->
         <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">तडीपार स्थिती[cite: 2]</label>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">तडीपार स्थिती</label>
                 <select name="tadipar_status" class="w-full border rounded px-3 py-2 text-xs bg-white">
                     <option value="No" {% if profile.tadipar and profile.tadipar.status == 'No' %}selected{% endif %}>नाही (No)</option>
                     <option value="Yes - Active" {% if profile.tadipar and profile.tadipar.status == 'Yes - Active' %}selected{% endif %}>होय - सध्या तडीपार (Active)</option>
@@ -115,7 +160,7 @@
                 </select>
             </div>
             <div class="sm:col-span-2">
-                <label class="block text-xs font-semibold text-slate-700 mb-1">तडीपार तपशील / मुदत[cite: 2]</label>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">तडीपार तपशील / मुदत</label>
                 <input type="text" name="tadipar_details" value="{{ profile.tadipar.order_details if profile.tadipar else '' }}" class="w-full border rounded px-3 py-2 text-xs bg-white">
             </div>
         </div>
@@ -132,4 +177,59 @@
 
     </form>
 </div>
+
+<script>
+function calculateAge() {
+    const dobValue = document.getElementById('dob_input').value;
+    if (dobValue) {
+        const birthDate = new Date(dobValue);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        if (age >= 0) {
+            document.getElementById('age_input').value = age;
+        }
+    }
+}
+
+function getCurrentLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                document.getElementById('latitude').value = pos.coords.latitude.toFixed(6);
+                document.getElementById('longitude').value = pos.coords.longitude.toFixed(6);
+            },
+            (err) => {
+                alert("GPS स्थान मिळवण्यात अडचण आली: " + err.message);
+            }
+        );
+    } else {
+        alert("आपल्या ब्राउझरमध्ये GPS सपोर्ट नाही.");
+    }
+}
+
+function addGunhaRow() {
+    const container = document.getElementById('gunha-container');
+    const div = document.createElement('div');
+    div.className = 'grid grid-cols-1 sm:grid-cols-3 gap-2 bg-white p-3 rounded border border-slate-200';
+    div.innerHTML = `
+        <div>
+            <label class="block text-[10px] font-bold text-slate-600 mb-1">अपराध क्र.</label>
+            <input type="text" name="fir_number[]" placeholder="FIR No" class="w-full border rounded px-2.5 py-1.5 text-xs">
+        </div>
+        <div>
+            <label class="block text-[10px] font-bold text-slate-600 mb-1">कलमे</label>
+            <input type="text" name="sections[]" placeholder="Sections" class="w-full border rounded px-2.5 py-1.5 text-xs">
+        </div>
+        <div>
+            <label class="block text-[10px] font-bold text-slate-600 mb-1">इतर तपशील</label>
+            <input type="text" name="case_other_details[]" placeholder="Details" class="w-full border rounded px-2.5 py-1.5 text-xs">
+        </div>
+    `;
+    container.appendChild(div);
+}
+</script>
 {% endblock %}
